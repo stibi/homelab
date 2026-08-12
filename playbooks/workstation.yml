@@ -10,3 +10,5 @@
       tags: [shell]
     - role: kubernetes
       tags: [kubernetes, k8s]
+    - role: talos
+      tags: [talos]

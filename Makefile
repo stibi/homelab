@@ -34,3 +34,12 @@ kubectl-latest: ## Print the current kubectl version and checksum, for pinning
 	@V=$$(curl -sL https://dl.k8s.io/release/stable.txt); \
 	echo "kubectl_version: $$V"; \
 	echo "kubectl_sha256: $$(curl -sL https://dl.k8s.io/release/$$V/bin/linux/amd64/kubectl.sha256)"
+
+talos-latest: ## Print current talosctl/omnictl versions and checksums, for pinning
+	@for r in siderolabs/talos:talosctl siderolabs/omni:omnictl; do \
+	  repo=$${r%%:*}; bin=$${r##*:}; \
+	  V=$$(curl -sL https://api.github.com/repos/$$repo/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p'); \
+	  echo "$$bin $$V"; \
+	  curl -sL https://github.com/$$repo/releases/download/$$V/sha256sum.txt \
+	    | grep -E "$$bin-linux-(amd64|arm64)$$" | sed 's/^/  /'; \
+	done

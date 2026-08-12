@@ -73,3 +73,27 @@ kubectl_sha256: ebbd080e7c2e275093b55915722043257eb24004363e20acb3c4d71919f88336
 # asset on 2026-08-12 and pins it from here on.
 kubie_version: v0.28.0
 kubie_sha256: 73c33bf140e3a6bf4cb603c371d1189f5bcce85ccc4e48fcfef9cd64642ffead
+
+# --- talos role --------------------------------------------------------
+
+# Sidero Labs CLIs. Unlike kubie, both projects publish a signed sha256sum.txt
+# with their releases, so these checksums are upstream's own — not observed
+# once and pinned. Versions current as of 2026-08-12.
+#
+# Both follow <url_base>/<version>/<name>-linux-<arch>.
+talos_binaries:
+  - name: talosctl
+    version: v1.13.8
+    url_base: https://github.com/siderolabs/talos/releases/download
+    version_args: version --client
+    sha256:
+      amd64: 406b56f9e4ff03b1557cc941b1f163aec8a6ebb36e28f0bbbe6d083589529261
+      arm64: 255ed9ccd2cfa26c619c5d445c013e4b6bf9e7d5a5aecbd72145db01a531ec60
+
+  - name: omnictl
+    version: v1.10.0
+    url_base: https://github.com/siderolabs/omni/releases/download
+    version_args: --version
+    sha256:
+      amd64: 7a5dc3af00ea77d286909953bb7bfdb9a660fb61bd111620fcd1761d054807e5
+      arm64: 4a1ec4b24361ea1051d1c2b9673dbf7987f62d1c82e73c32e7894714b04c8182

@@ -8,8 +8,10 @@ inventory/host_vars/*/vault.yml
 inventory/local.yml
 ansible.local.cfg
 
-# Claude Code machine-local permission grants (settings.json is shareable)
+# Claude Code machine-local permission grants (settings.json is shareable).
+# The .tmp.* glob catches the atomic-write temp files it leaves mid-update.
 .claude/settings.local.json
+.claude/*.tmp.*
 
 # Editors / OS
 .DS_Store

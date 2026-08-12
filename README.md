@@ -18,6 +18,7 @@ roles/
   base/                           apt packages every box should have
   shell/                          zsh, starship, plugins, dotfiles via stow
   kubernetes/                     kubectl + kubie, kubeconfig layout
+  talos/                          talosctl + omnictl
 Makefile                          check / apply wrappers
 ```
 
@@ -107,6 +108,22 @@ curl -sL "https://dl.k8s.io/release/$V/bin/linux/amd64/kubectl.sha256"
 They are pinned rather than fetched at run time on purpose — fetching the
 checksum from the same place as the binary would verify nothing. Pinning them
 in git is what makes the download meaningful and the build reproducible.
+
+## Upgrading talosctl / omnictl
+
+Both live in the `talos_binaries` list in
+`inventory/group_vars/workstations.yml`, pinned per architecture. Unlike
+kubie, Sidero publish a `sha256sum.txt` with every release, so these are
+upstream's own checksums.
+
+```sh
+make talos-latest
+```
+
+That prints the current tag and the linux checksums for both projects; paste
+them into the list. Bear in mind **omnictl should track the Omni instance you
+connect to** — taking the newest release is not automatically right if your
+Omni backend is older.
 
 ## Adding another host
 

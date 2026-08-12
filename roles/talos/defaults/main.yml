@@ -1,0 +1,6 @@
+---
+# Overridden in inventory/group_vars/workstations.yml.
+talos_binaries: []
+
+talos_install_dir: "{{ ansible_user_dir }}/.local/bin"
+talos_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"

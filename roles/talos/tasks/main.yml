@@ -1,0 +1,65 @@
+---
+# Sidero Labs CLIs (talosctl, omnictl).
+#
+# Neither is packaged for Debian, so both are pinned, checksum-verified
+# binaries from their GitHub releases, installed alongside kubectl and kubie
+# in the user's ~/.local/bin.
+#
+# Driven by the talos_binaries list rather than a task block per tool: both
+# releases follow the same <base>/<version>/<name>-linux-<arch> URL shape, so
+# adding another Sidero CLI is one list entry.
+
+- name: Assert the Sidero CLIs are pinned for this architecture
+  ansible.builtin.assert:
+    that:
+      - item.version | default('') | length > 0
+      - item.sha256[talos_arch] | default('') | length > 0
+    fail_msg: >-
+      {{ item.name }} needs a version and a sha256 for {{ talos_arch }}.
+      See "Upgrading talosctl / omnictl" in the README.
+    quiet: true
+  loop: "{{ talos_binaries }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Ensure the local bin directory exists
+  ansible.builtin.file:
+    path: "{{ talos_install_dir }}"
+    state: directory
+
+# get_url checks the destination's checksum before fetching, so this is a
+# no-op once the pinned version is in place.
+- name: Install the Sidero CLIs
+  ansible.builtin.get_url:
+    url: "{{ item.url_base }}/{{ item.version }}/{{ item.name }}-linux-{{ talos_arch }}"
+    dest: "{{ talos_install_dir }}/{{ item.name }}"
+    checksum: "sha256:{{ item.sha256[talos_arch] }}"
+    mode: "0755"
+  loop: "{{ talos_binaries }}"
+  loop_control:
+    label: "{{ item.name }} {{ item.version }}"
+
+# Skipped under --check: the download above was a no-op there, so on a fresh
+# machine the binaries would not exist yet.
+- name: Read back the installed versions
+  ansible.builtin.command:
+    cmd: "{{ talos_install_dir }}/{{ item.name }} {{ item.version_args }}"
+  changed_when: false
+  when: not ansible_check_mode
+  loop: "{{ talos_binaries }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: talos_reported
+
+- name: Assert the installed CLIs match the pinned versions
+  ansible.builtin.assert:
+    that:
+      - item.item.version in item.stdout
+    fail_msg: >-
+      {{ item.item.name }}: expected {{ item.item.version }}, but the binary
+      reports "{{ item.stdout | default('') | trim }}".
+    quiet: true
+  loop: "{{ talos_reported.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when: not ansible_check_mode

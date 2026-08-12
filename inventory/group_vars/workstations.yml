@@ -1,0 +1,75 @@
+---
+# Variables shared by every workstation-class host.
+
+# --- base role ---------------------------------------------------------
+
+base_packages:
+  - ca-certificates
+  - curl
+  - git
+  - htop
+  - jq
+  - tmux
+  - tree
+  - unzip
+  - wget
+
+# NOTE: neovim is deliberately NOT installed from apt on zase-prace.
+# A newer upstream build already lives in /opt/nvim-linux-x86_64 and is on
+# PATH; installing the apt package (0.10.x) would shadow it in /usr/bin.
+
+# --- shell role --------------------------------------------------------
+
+shell_packages:
+  # shell itself + prompt
+  - zsh
+  - zsh-autosuggestions
+  - zsh-syntax-highlighting
+  - starship
+  - stow
+  # search & navigation
+  - fzf
+  - ripgrep
+  - fd-find
+  - zoxide
+  # file / diff viewing
+  - eza
+  - bat
+  - git-delta
+  # per-directory environments
+  - direnv
+
+# zsh-completions is not packaged in Debian 13; zsh 5.9 ships a large
+# completion set in /usr/share/zsh/vendor-completions already.
+
+shell_login_shell: /usr/bin/zsh
+
+dotfiles_repo: git@github.com:stibi/dotfiles.git
+dotfiles_dir: "{{ ansible_user_dir }}/dev/moje/dotfiles"
+
+# The stow package holding this host's shell config.
+shell_stow_package: zsh-linux-zase-prace-vm
+
+# Paths the stow package owns. A pre-existing *regular file* at any of these
+# would make stow abort, so the role moves it aside first.
+shell_stow_targets:
+  - "{{ ansible_user_dir }}/.zshrc"
+  - "{{ ansible_user_dir }}/.zshrc.d"
+  - "{{ ansible_user_dir }}/.config/starship.toml"
+  - "{{ ansible_user_dir }}/.kube/kubie.yaml"
+
+# --- kubernetes role ---------------------------------------------------
+
+# Pinned deliberately: "latest" is not reproducible. Both values must be
+# bumped together — see "Upgrading kubectl" in the README.
+# v1.36.3 was the current stable as of 2026-08-12.
+kubectl_version: v1.36.3
+kubectl_sha256: ebbd080e7c2e275093b55915722043257eb24004363e20acb3c4d71919f88336
+
+# kubie manages the split kubeconfig setup: one file per cluster in
+# ~/.kube/configs/, each `kubie ctx` getting its own isolated subshell.
+# Not packaged for Debian, so it comes from the GitHub release.
+# Upstream publishes no checksum file; this sha256 was taken from the v0.28.0
+# asset on 2026-08-12 and pins it from here on.
+kubie_version: v0.28.0
+kubie_sha256: 73c33bf140e3a6bf4cb603c371d1189f5bcce85ccc4e48fcfef9cd64642ffead

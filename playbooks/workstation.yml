@@ -1,0 +1,12 @@
+---
+- name: Provision and personalise workstation
+  hosts: workstations
+  gather_facts: true
+
+  roles:
+    - role: base
+      tags: [base]
+    - role: shell
+      tags: [shell]
+    - role: kubernetes
+      tags: [kubernetes, k8s]

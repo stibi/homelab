@@ -1,0 +1,19 @@
+# Ansible
+*.retry
+.vault_pass
+vault_pass.txt
+inventory/host_vars/*/vault.yml
+
+# Local overrides, not for the repo
+inventory/local.yml
+ansible.local.cfg
+
+# Claude Code machine-local permission grants (settings.json is shareable)
+.claude/settings.local.json
+
+# Editors / OS
+.DS_Store
+*.swp
+*~
+.idea/
+.vscode/

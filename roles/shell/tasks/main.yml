@@ -1,0 +1,105 @@
+---
+- name: Install shell packages
+  become: true
+  ansible.builtin.apt:
+    name: "{{ shell_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+# No mode set on purpose — if the directory already exists, leave whatever
+# permissions it has alone rather than churning them on every run.
+- name: Ensure ~/.config exists
+  ansible.builtin.file:
+    path: "{{ ansible_user_dir }}/.config"
+    state: directory
+
+# --- dotfiles ----------------------------------------------------------
+
+- name: Check whether the dotfiles repo is already cloned
+  ansible.builtin.stat:
+    path: "{{ dotfiles_dir }}/.git"
+  register: dotfiles_git
+
+# Clone only when missing. Deliberately never pulls: the repo is edited by
+# hand on this box and an automatic update could throw away local work.
+- name: Clone the dotfiles repo
+  ansible.builtin.git:
+    repo: "{{ dotfiles_repo }}"
+    dest: "{{ dotfiles_dir }}"
+    version: "{{ dotfiles_branch }}"
+    update: false
+  when: not dotfiles_git.stat.exists
+
+- name: Stat the paths the stow package will own
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ shell_stow_targets }}"
+  register: shell_stow_stat
+
+# stow refuses to overwrite a real file. Anything already sitting at one of
+# those paths (e.g. a hand-written ~/.zshrc) is preserved with a suffix
+# rather than lost.
+- name: Move pre-existing real files out of stow's way
+  ansible.builtin.command:
+    cmd: >-
+      mv {{ item.stat.path | quote }}
+         {{ (item.stat.path ~ '.pre-stow.' ~ ansible_date_time.iso8601_basic_short) | quote }}
+  loop: "{{ shell_stow_stat.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when:
+    - item.stat.exists
+    - not item.stat.islnk
+  changed_when: true
+
+# --no-folding is important, not cosmetic. Without it stow replaces a whole
+# directory with a single symlink into the repo when every file under it comes
+# from the package — so ~/.kube would become a link, and anything later written
+# there (~/.kube/configs/, cluster credentials) would land inside the dotfiles
+# repo. With it, real directories are created and only leaf files are linked.
+# It also means untracked local fragments can sit in ~/.zshrc.d/ safely.
+- name: Deploy the shell dotfiles with stow
+  ansible.builtin.command:
+    cmd: >-
+      stow --verbose --restow --no-folding
+      --target={{ ansible_user_dir | quote }}
+      {{ shell_stow_package | quote }}
+    chdir: "{{ dotfiles_dir }}"
+  register: shell_stow
+  changed_when: >-
+    'LINK:' in shell_stow.stderr
+    or 'UNLINK:' in shell_stow.stderr
+    or 'MKDIR:' in shell_stow.stderr
+
+# --- login shell -------------------------------------------------------
+
+- name: Confirm the zsh binary is where we expect
+  ansible.builtin.stat:
+    path: "{{ shell_login_shell }}"
+  register: shell_zsh_bin
+
+# Skipped under --check: the apt task above was a no-op there, so the binary
+# legitimately will not exist yet.
+- name: Assert zsh is installed
+  ansible.builtin.assert:
+    that:
+      - shell_zsh_bin.stat.exists
+    fail_msg: "{{ shell_login_shell }} not found — did the zsh package install?"
+    quiet: true
+  when: not ansible_check_mode
+
+- name: Set the login shell to zsh
+  become: true
+  ansible.builtin.user:
+    name: "{{ ansible_user_id }}"
+    shell: "{{ shell_login_shell }}"
+
+# --- smoke test --------------------------------------------------------
+
+# Starts a real interactive shell so a broken fragment surfaces here rather
+# than the next time you log in and get dropped into a half-working prompt.
+- name: Verify the zsh config loads without errors
+  ansible.builtin.command:
+    cmd: "{{ shell_login_shell }} -i -c 'exit 0'"
+  changed_when: false

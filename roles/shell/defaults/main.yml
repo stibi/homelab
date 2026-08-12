@@ -1,0 +1,10 @@
+---
+# Overridden in inventory/group_vars/workstations.yml.
+shell_packages: []
+shell_login_shell: /usr/bin/zsh
+shell_stow_package: ""
+shell_stow_targets: []
+
+dotfiles_repo: git@github.com:stibi/dotfiles.git
+dotfiles_dir: "{{ ansible_user_dir }}/dev/moje/dotfiles"
+dotfiles_branch: master

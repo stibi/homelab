@@ -1,0 +1,3 @@
+---
+# Overridden in inventory/group_vars/workstations.yml.
+base_packages: []

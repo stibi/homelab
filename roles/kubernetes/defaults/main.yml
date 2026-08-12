@@ -1,0 +1,15 @@
+---
+# Overridden in inventory/group_vars/workstations.yml.
+kubectl_version: ""
+kubectl_sha256: ""
+kubectl_install_dir: "{{ ansible_user_dir }}/.local/bin"
+
+# dl.k8s.io publishes linux/amd64 and linux/arm64.
+kubectl_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
+
+kubie_version: ""
+kubie_sha256: ""
+kubie_install_dir: "{{ ansible_user_dir }}/.local/bin"
+
+kube_dir: "{{ ansible_user_dir }}/.kube"
+kube_configs_dir: "{{ ansible_user_dir }}/.kube/configs"

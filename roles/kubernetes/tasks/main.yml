@@ -1,0 +1,129 @@
+---
+# kubectl is installed as a pinned, checksum-verified binary rather than from
+# a package repo. Debian 13 ships 1.32.3, and the official Kubernetes apt repo
+# for v1.36 only carries 1.36.0-1.1 — neither can give us the current stable
+# release, so the binary from dl.k8s.io it is.
+#
+# Installed into the user's ~/.local/bin, which already comes first on PATH.
+# That deliberately takes over the manually-placed binary already there rather
+# than adding a second copy in /usr/bin for PATH order to arbitrate.
+
+- name: Assert kubectl version and checksum are pinned
+  ansible.builtin.assert:
+    that:
+      - kubectl_version | length > 0
+      - kubectl_sha256 | length > 0
+    fail_msg: >-
+      kubectl_version and kubectl_sha256 must both be set. See the
+      "Upgrading kubectl" section of the README for how to obtain them.
+    quiet: true
+
+- name: Ensure the local bin directory exists
+  ansible.builtin.file:
+    path: "{{ kubectl_install_dir }}"
+    state: directory
+
+# get_url compares the checksum of any existing file first, so this is a
+# no-op once the right version is in place — no re-download on every run.
+- name: Install kubectl {{ kubectl_version }}
+  ansible.builtin.get_url:
+    url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/{{ kubectl_arch }}/kubectl"
+    dest: "{{ kubectl_install_dir }}/kubectl"
+    checksum: "sha256:{{ kubectl_sha256 }}"
+    mode: "0755"
+
+# Skipped under --check: the download above was a no-op there, so on a fresh
+# machine the binary would not exist yet.
+- name: Read back the installed kubectl version
+  ansible.builtin.command:
+    cmd: "{{ kubectl_install_dir }}/kubectl version --client=true -o json"
+  changed_when: false
+  when: not ansible_check_mode
+  register: kubectl_reported
+
+- name: Assert the installed kubectl is the version we pinned
+  ansible.builtin.assert:
+    that:
+      - (kubectl_reported.stdout | from_json).clientVersion.gitVersion == kubectl_version
+    fail_msg: >-
+      Expected {{ kubectl_version }} but the binary reports
+      {{ (kubectl_reported.stdout | from_json).clientVersion.gitVersion }}.
+    quiet: true
+  when: not ansible_check_mode
+
+# --- kubie -------------------------------------------------------------
+
+- name: Assert kubie version and checksum are pinned
+  ansible.builtin.assert:
+    that:
+      - kubie_version | length > 0
+      - kubie_sha256 | length > 0
+    fail_msg: "kubie_version and kubie_sha256 must both be set."
+    quiet: true
+
+- name: Install kubie {{ kubie_version }}
+  ansible.builtin.get_url:
+    url: >-
+      https://github.com/kubie-org/kubie/releases/download/{{ kubie_version }}/kubie-linux-{{ kubectl_arch }}
+    dest: "{{ kubie_install_dir }}/kubie"
+    checksum: "sha256:{{ kubie_sha256 }}"
+    mode: "0755"
+
+- name: Read back the installed kubie version
+  ansible.builtin.command:
+    cmd: "{{ kubie_install_dir }}/kubie --version"
+  changed_when: false
+  when: not ansible_check_mode
+  register: kubie_reported
+
+- name: Assert the installed kubie is the version we pinned
+  ansible.builtin.assert:
+    that:
+      - kubie_version | regex_replace('^v', '') in kubie_reported.stdout
+    fail_msg: >-
+      Expected {{ kubie_version }} but the binary reports
+      "{{ kubie_reported.stdout }}".
+    quiet: true
+  when: not ansible_check_mode
+
+# --- kubeconfig layout -------------------------------------------------
+
+# These hold cluster credentials, so 0700/0600 throughout. Kept out of the
+# dotfiles repo on purpose — cluster files are dropped in by hand.
+- name: Ensure the kubeconfig directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0700"
+  loop:
+    - "{{ kube_dir }}"
+    - "{{ kube_configs_dir }}"
+
+# First entry of KUBECONFIG, so `kubectl config use-context` and friends write
+# here rather than rewriting a pristine per-cluster file. Holds no cluster
+# definitions of its own, and kubie is configured to ignore it.
+- name: Create the scratch kubeconfig that absorbs kubectl writes
+  ansible.builtin.copy:
+    content: |
+      apiVersion: v1
+      kind: Config
+      preferences: {}
+      clusters: []
+      contexts: []
+      users: []
+    dest: "{{ kube_dir }}/config"
+    force: false
+    mode: "0600"
+
+- name: Report how many cluster configs are present
+  ansible.builtin.find:
+    paths: "{{ kube_configs_dir }}"
+    patterns: ["*.yaml", "*.yml"]
+  register: kube_cluster_files
+
+- name: Show the discovered clusters
+  ansible.builtin.debug:
+    msg: >-
+      {{ kube_cluster_files.matched }} cluster config(s) in {{ kube_configs_dir }}.
+      {{ 'Drop one file per cluster there; kubie picks them up automatically.'
+         if kube_cluster_files.matched == 0 else '' }}

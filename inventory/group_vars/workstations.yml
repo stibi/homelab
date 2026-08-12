@@ -115,3 +115,57 @@ talos_binaries:
 asdf_tools:
   - name: pre-commit
     version: 4.6.2
+
+# --- cli_tools role ----------------------------------------------------
+
+# Release tarballs, pinned and checksum-verified. Versions current as of
+# 2026-08-13. gh, glab and flux are pinned for both arches (upstream publishes
+# both); cue is amd64-only because it ships no checksums file at all, so an
+# arm64 pin would have to be computed by hand. The role asserts on a missing
+# pin rather than silently building a bad URL.
+#
+# gh and glab ARE in Debian 13, but far behind: gh 2.46.0 vs 2.97.0 upstream,
+# glab 1.53.0 vs 1.113.0. cue and flux are not packaged at all.
+#
+# version_args differ per tool and were checked against the real binaries:
+# cue has no --version flag at all, it is `cue version`.
+#
+# archive_path is where the binary sits inside the tarball; all four differ.
+cli_tools:
+  - name: gh
+    version: 2.97.0
+    url: https://github.com/cli/cli/releases/download/v2.97.0/gh_2.97.0_linux_{{ cli_tools_arch }}.tar.gz
+    archive_path: gh_2.97.0_linux_{{ cli_tools_arch }}/bin/gh
+    version_args: --version
+    sha256:
+      amd64: a2c9b8497e1f85b1ad0dfcb78b5a622e098801b8e461e459e88e1ee12f018112
+      arm64: 73ea440ecad9c9e284429997ee6f93577bc6f7bc6fba357ef62c53ad8fb641a5
+
+  - name: glab
+    version: 1.113.0
+    url: https://gitlab.com/api/v4/projects/gitlab-org%2Fcli/packages/generic/glab/1.113.0/glab_1.113.0_linux_{{ cli_tools_arch }}.tar.gz
+    archive_path: bin/glab
+    version_args: --version
+    sha256:
+      amd64: c265589fb2018f310b6a27df9356efee42991f858e7e3a5fa232228a13b47467
+      arm64: 0c4cab3b35f7641e7955492b9491d7070698a958f0dfcb49d989e71bd78793c2
+
+  # cue is the one tool here that publishes no checksums file, so this sha256
+  # was computed from the v0.17.1 artifact on 2026-08-13 and pins it from now
+  # on. Note the tarball name carries a "v" the others do not.
+  - name: cue
+    version: 0.17.1
+    url: https://github.com/cue-lang/cue/releases/download/v0.17.1/cue_v0.17.1_linux_{{ cli_tools_arch }}.tar.gz
+    archive_path: cue
+    version_args: version
+    sha256:
+      amd64: a39b0c97695069d95d276d99be0f5dbabb081d801bfdc9ba49b76efaf94e2369
+
+  - name: flux
+    version: 2.9.4
+    url: https://github.com/fluxcd/flux2/releases/download/v2.9.4/flux_2.9.4_linux_{{ cli_tools_arch }}.tar.gz
+    archive_path: flux
+    version_args: --version
+    sha256:
+      amd64: c2c397a52930f52d2005c01d276116b059d062de379386d58e98115380a766a2
+      arm64: dcab945f8d8658662fa1db93e150a602ba1f91da367a82e099bd65595fc7c62c

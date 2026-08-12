@@ -1,0 +1,12 @@
+---
+# Overridden in inventory/group_vars/workstations.yml.
+cli_tools: []
+
+cli_tools_install_dir: "{{ ansible_user_dir }}/.local/bin"
+
+# Archives are kept so re-runs verify a local checksum instead of
+# re-downloading. Deliberately not under /tmp — that is a separate 444M
+# volume on this host, and these archives total ~65M.
+cli_tools_cache_dir: "{{ ansible_user_dir }}/.cache/ansible-downloads"
+
+cli_tools_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"

@@ -1,0 +1,102 @@
+---
+# CLI tools shipped as release tarballs (gh, glab, cue, flux).
+#
+# Separate from the kubernetes/talos roles because those tools publish bare
+# binaries, while these are archives — and all four lay their archives out
+# differently: gh nests under a versioned directory, glab under bin/, cue and
+# flux put the binary at the archive root. Hence the per-tool archive_path.
+#
+# Version is not taken on faith either: each tool is asked what it is before
+# anything downloads, so a re-run is a no-op and a version bump reinstalls.
+
+- name: Assert the CLI tools are pinned for this architecture
+  ansible.builtin.assert:
+    that:
+      - item.version | default('') | length > 0
+      - item.sha256[cli_tools_arch] | default('') | length > 0
+    fail_msg: >-
+      {{ item.name }} has no pinned sha256 for {{ cli_tools_arch }}. Only
+      amd64 is pinned — see "Upgrading the CLI tools" in the README.
+    quiet: true
+  loop: "{{ cli_tools }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Ensure the install and cache directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - "{{ cli_tools_install_dir }}"
+    - "{{ cli_tools_cache_dir }}"
+
+# failed_when: false so a not-yet-installed tool reports empty rather than
+# aborting the play. check_mode: false because this only reads.
+- name: Read the currently installed versions
+  ansible.builtin.command:
+    cmd: "{{ cli_tools_install_dir }}/{{ item.name }} {{ item.version_args | default('--version') }}"
+  register: cli_tools_current
+  failed_when: false
+  changed_when: false
+  check_mode: false
+  loop: "{{ cli_tools }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Download the release archives
+  ansible.builtin.get_url:
+    url: "{{ item.0.url }}"
+    dest: "{{ cli_tools_cache_dir }}/{{ item.0.name }}-{{ item.0.version }}.tar.gz"
+    checksum: "sha256:{{ item.0.sha256[cli_tools_arch] }}"
+    mode: "0644"
+  loop: "{{ cli_tools | zip(cli_tools_current.results) | list }}"
+  loop_control:
+    label: "{{ item.0.name }} {{ item.0.version }}"
+  # Skipped under --check: the cache directory above is only simulated there,
+  # so there would be nowhere to write. Keeping this guard means a dry run
+  # never creates anything on disk.
+  when:
+    - item.0.version not in (item.1.stdout | default(''))
+    - not ansible_check_mode
+
+# Extracts only the one archive member, stripping its leading directories.
+# Skipped under --check because the download above was a no-op there, so the
+# archive would not be on disk yet.
+- name: Install the binaries from the archives
+  ansible.builtin.unarchive:
+    src: "{{ cli_tools_cache_dir }}/{{ item.0.name }}-{{ item.0.version }}.tar.gz"
+    dest: "{{ cli_tools_install_dir }}"
+    remote_src: true
+    mode: "0755"
+    extra_opts:
+      - "--strip-components={{ item.0.archive_path.split('/') | length - 1 }}"
+      - "{{ item.0.archive_path }}"
+  loop: "{{ cli_tools | zip(cli_tools_current.results) | list }}"
+  loop_control:
+    label: "{{ item.0.name }} {{ item.0.version }}"
+  when:
+    - item.0.version not in (item.1.stdout | default(''))
+    - not ansible_check_mode
+
+- name: Read back the installed versions
+  ansible.builtin.command:
+    cmd: "{{ cli_tools_install_dir }}/{{ item.name }} {{ item.version_args | default('--version') }}"
+  changed_when: false
+  when: not ansible_check_mode
+  loop: "{{ cli_tools }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: cli_tools_reported
+
+- name: Assert the installed tools match the pinned versions
+  ansible.builtin.assert:
+    that:
+      - item.item.version in item.stdout
+    fail_msg: >-
+      {{ item.item.name }}: expected {{ item.item.version }}, but the binary
+      reports "{{ item.stdout | default('') | trim }}".
+    quiet: true
+  loop: "{{ cli_tools_reported.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when: not ansible_check_mode

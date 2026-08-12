@@ -20,6 +20,7 @@ roles/
   kubernetes/                     kubectl + kubie, kubeconfig layout
   talos/                          talosctl + omnictl
   asdf/                           asdf plugins and pinned versions (pre-commit)
+  cli_tools/                      gh, glab, cue, flux from release tarballs
 Makefile                          check / apply wrappers
 ```
 
@@ -109,6 +110,34 @@ curl -sL "https://dl.k8s.io/release/$V/bin/linux/amd64/kubectl.sha256"
 They are pinned rather than fetched at run time on purpose — fetching the
 checksum from the same place as the binary would verify nothing. Pinning them
 in git is what makes the download meaningful and the build reproducible.
+
+## Upgrading the CLI tools (gh, glab, cue, flux)
+
+All four are pinned release tarballs in the `cli_tools` list in
+`inventory/group_vars/workstations.yml`.
+
+```sh
+make cli-latest
+```
+
+That prints current versions and checksums for all four. Paste them in, along
+with the version inside `url` and `archive_path`.
+
+Things that bite when bumping these:
+
+- **Each tool lays its tarball out differently**, which is what `archive_path`
+  records: `gh` nests under a versioned directory, `glab` under `bin/`, `cue`
+  and `flux` put the binary at the archive root. `gh`'s path contains the
+  version, so it must be bumped in two places.
+- **`cue` publishes no checksums file** — its sha256 has to be computed by
+  hand (`make cli-latest` prints the command). It is also the only one whose
+  tarball name carries a `v` prefix.
+- **`cue` has no `--version` flag**; it is `cue version`. That is why
+  `version_args` is per-tool.
+- `gh`, `glab` and `flux` are pinned for amd64 and arm64; `cue` is amd64 only.
+
+Both `gh` and `glab` exist in Debian 13, but lag badly — 2.46.0 vs 2.97.0 and
+1.53.0 vs 1.113.0 — which is why they come from upstream releases instead.
 
 ## asdf-managed tools
 

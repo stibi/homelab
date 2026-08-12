@@ -1,0 +1,7 @@
+---
+# Overridden in inventory/group_vars/workstations.yml.
+asdf_tools: []
+
+asdf_dir: "{{ ansible_user_dir }}/.asdf"
+asdf_data_dir: "{{ ansible_user_dir }}/.asdf"
+asdf_bin: "{{ ansible_user_dir }}/.asdf/bin/asdf"

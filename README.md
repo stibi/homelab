@@ -19,6 +19,7 @@ roles/
   shell/                          zsh, starship, plugins, dotfiles via stow
   kubernetes/                     kubectl + kubie, kubeconfig layout
   talos/                          talosctl + omnictl
+  asdf/                           asdf plugins and pinned versions (pre-commit)
 Makefile                          check / apply wrappers
 ```
 
@@ -108,6 +109,29 @@ curl -sL "https://dl.k8s.io/release/$V/bin/linux/amd64/kubectl.sha256"
 They are pinned rather than fetched at run time on purpose — fetching the
 checksum from the same place as the binary would verify nothing. Pinning them
 in git is what makes the download meaningful and the build reproducible.
+
+## asdf-managed tools
+
+asdf is hand-installed and already manages nodejs and bun. The `asdf` role
+does **not** install or touch asdf itself — it only adds plugins and pins
+versions listed in `asdf_tools`, so the existing entries are left alone.
+
+Currently that is **pre-commit**. The plugin installs pre-commit's official
+`.pyz` zipapp from its GitHub release, so no pip or system Python packaging is
+involved; the zipapp runs under `python3` directly.
+
+`~/.tool-versions` is edited with `lineinfile` rather than `asdf set --home`.
+The file carries hand-written entries — including `nodejs lts`, an alias
+rather than a concrete version — and rewriting it through asdf risks
+normalising those. This way only the managed line is touched.
+
+Note that asdf plugins fetch without checksum verification, unlike the pinned
+binaries in the `kubernetes` and `talos` roles. That is inherent to asdf.
+
+**`python3-venv` is a hard requirement**, and is in `base_packages` for this
+reason: Debian splits venv out of the stdlib, so `python3 -m venv` fails
+without it. pre-commit builds a virtualenv for every `language: python` hook,
+so without it pre-commit installs cleanly and then breaks on first real use.
 
 ## Upgrading talosctl / omnictl
 

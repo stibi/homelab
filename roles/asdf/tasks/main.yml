@@ -1,0 +1,90 @@
+---
+# Tools managed through asdf.
+#
+# asdf itself is NOT installed here — it was set up by hand and already manages
+# nodejs and bun. This role only adds plugins and pins versions, so it stays out
+# of the way of what is already there.
+#
+# Note this is asdf v0.20 (the Go rewrite): `asdf global` no longer exists, and
+# the plugin/install layout lives under $ASDF_DATA_DIR.
+
+- name: Confirm asdf is installed
+  ansible.builtin.stat:
+    path: "{{ asdf_bin }}"
+  register: asdf_stat
+
+- name: Assert asdf is present
+  ansible.builtin.assert:
+    that:
+      - asdf_stat.stat.exists
+    fail_msg: >-
+      asdf not found at {{ asdf_bin }}. This role manages asdf plugins but does
+      not install asdf itself — install it first.
+    quiet: true
+
+- name: Add the asdf plugins
+  ansible.builtin.command:
+    cmd: "{{ asdf_bin }} plugin add {{ item.name }}"
+    creates: "{{ asdf_data_dir }}/plugins/{{ item.name }}"
+  environment: &asdf_env
+    ASDF_DATA_DIR: "{{ asdf_data_dir }}"
+    PATH: "{{ asdf_dir }}/bin:{{ asdf_data_dir }}/shims:{{ ansible_env.PATH }}"
+  loop: "{{ asdf_tools }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Install the pinned tool versions
+  ansible.builtin.command:
+    cmd: "{{ asdf_bin }} install {{ item.name }} {{ item.version }}"
+    creates: "{{ asdf_data_dir }}/installs/{{ item.name }}/{{ item.version }}"
+  environment: *asdf_env
+  loop: "{{ asdf_tools }}"
+  loop_control:
+    label: "{{ item.name }} {{ item.version }}"
+
+# Pinned with lineinfile rather than `asdf set --home` on purpose. ~/.tool-versions
+# already carries hand-written entries (including "nodejs lts", an alias rather
+# than a concrete version); rewriting the file through asdf risks normalising
+# those. This touches only the one line it owns.
+- name: Pin the global versions in ~/.tool-versions
+  ansible.builtin.lineinfile:
+    path: "{{ ansible_user_dir }}/.tool-versions"
+    regexp: '^{{ item.name }}\s'
+    line: "{{ item.name }} {{ item.version }}"
+    create: true
+    # No mode: the file already exists and is hand-maintained, so leave its
+    # permissions as they are rather than churning them on every run.
+  loop: "{{ asdf_tools }}"
+  loop_control:
+    label: "{{ item.name }} {{ item.version }}"
+
+- name: Regenerate the asdf shims
+  ansible.builtin.command:
+    cmd: "{{ asdf_bin }} reshim"
+  environment: *asdf_env
+  changed_when: false
+  when: not ansible_check_mode
+
+# Skipped under --check: nothing was installed there, so the shim would not exist.
+- name: Read back the installed tool versions
+  ansible.builtin.command:
+    cmd: "{{ asdf_data_dir }}/shims/{{ item.name }} {{ item.version_args | default('--version') }}"
+  changed_when: false
+  when: not ansible_check_mode
+  loop: "{{ asdf_tools }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: asdf_reported
+
+- name: Assert the installed tools match the pinned versions
+  ansible.builtin.assert:
+    that:
+      - item.item.version in item.stdout
+    fail_msg: >-
+      {{ item.item.name }}: expected {{ item.item.version }}, but the shim
+      reports "{{ item.stdout | default('') | trim }}".
+    quiet: true
+  loop: "{{ asdf_reported.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when: not ansible_check_mode

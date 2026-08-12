@@ -13,6 +13,11 @@ base_packages:
   - tree
   - unzip
   - wget
+  # Debian splits venv out of the stdlib, so python3 alone cannot create one
+  # (no ensurepip). pre-commit builds a virtualenv for every language:python
+  # hook — ruff, black, yamllint, detect-secrets — so without this, pre-commit
+  # installs fine and then fails the moment it runs a real hook.
+  - python3-venv
 
 # NOTE: neovim is deliberately NOT installed from apt on zase-prace.
 # A newer upstream build already lives in /opt/nvim-linux-x86_64 and is on
@@ -97,3 +102,16 @@ talos_binaries:
     sha256:
       amd64: 7a5dc3af00ea77d286909953bb7bfdb9a660fb61bd111620fcd1761d054807e5
       arm64: 4a1ec4b24361ea1051d1c2b9673dbf7987f62d1c82e73c32e7894714b04c8182
+
+# --- asdf role ---------------------------------------------------------
+
+# asdf itself is hand-installed and already manages nodejs and bun; this list
+# only covers what Ansible owns, so those two are deliberately left alone.
+#
+# The asdf-pre-commit plugin downloads pre-commit's official .pyz zipapp from
+# its GitHub release. The zipapp's shebang is `#!/usr/bin/env python3`, which
+# Debian satisfies — the plugin's docs mention a bare `python`, but that is
+# only help text and is not required.
+asdf_tools:
+  - name: pre-commit
+    version: 4.6.2

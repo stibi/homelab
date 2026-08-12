@@ -12,3 +12,5 @@
       tags: [kubernetes, k8s]
     - role: talos
       tags: [talos]
+    - role: asdf
+      tags: [asdf]

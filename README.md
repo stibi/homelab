@@ -21,6 +21,7 @@ roles/
   talos/                          talosctl + omnictl
   asdf/                           asdf plugins and pinned versions (pre-commit)
   cli_tools/                      gh, glab, cue, flux from release tarballs
+  codex/                          OpenAI Codex CLI
 Makefile                          check / apply wrappers
 ```
 
@@ -138,6 +139,30 @@ Things that bite when bumping these:
 
 Both `gh` and `glab` exist in Debian 13, but lag badly — 2.46.0 vs 2.97.0 and
 1.53.0 vs 1.113.0 — which is why they come from upstream releases instead.
+
+## Upgrading codex
+
+Set `codex_version` and the matching `codex_sha256` entry in
+`inventory/group_vars/workstations.yml`:
+
+```sh
+V=$(curl -sL https://api.github.com/repos/openai/codex/releases/latest \
+    | sed -n 's/.*"tag_name": "rust-v\([^"]*\)".*/\1/p') && echo "$V"
+curl -sL "https://github.com/openai/codex/releases/download/rust-v$V/codex-package_SHA256SUMS" \
+  | grep -E 'package-(x86_64|aarch64)-unknown-linux-musl'
+```
+
+Note the upstream tag is `rust-vX.Y.Z` while the version is `X.Y.Z`, and that
+artifacts are named with Rust target triples rather than amd64/arm64.
+
+codex installs differently from the other CLI tools. It is unpacked whole into
+`~/.local/share/codex/<version>/` and symlinked to `~/.local/bin/codex`,
+because the release is not a lone binary — it bundles a ripgrep, a `bwrap`
+sandbox and zsh resources that codex expects beside itself. It is also large:
+~119M compressed, ~300M unpacked. Only the `-package-` artifacts have
+published checksums, which is the other reason that variant is used.
+
+Old versions are left in `~/.local/share/codex/` on a bump; remove them by hand.
 
 ## asdf-managed tools
 

@@ -169,3 +169,14 @@ cli_tools:
     sha256:
       amd64: c2c397a52930f52d2005c01d276116b059d062de379386d58e98115380a766a2
       arm64: dcab945f8d8658662fa1db93e150a602ba1f91da367a82e099bd65595fc7c62c
+
+# --- codex role --------------------------------------------------------
+
+# The upstream tag is "rust-v0.147.0" while the version itself is 0.147.0;
+# the role builds the tag from this value. Checksums are upstream's own, from
+# codex-package_SHA256SUMS, which covers only the "package" artifacts — the
+# plain binary tarballs have no published checksum at all.
+codex_version: 0.147.0
+codex_sha256:
+  x86_64-unknown-linux-musl: bd758d53d56e41dc65e045f4589df79a038ed197a011adcb52a258e6ad64cfda
+  aarch64-unknown-linux-musl: 89cbf79bd5ae6f9c58da47e8079f311c84219350c9c43c070d42f3e9b2a81401

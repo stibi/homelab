@@ -1,0 +1,14 @@
+---
+# Overridden in inventory/group_vars/workstations.yml.
+codex_version: ""
+codex_sha256: {}
+
+codex_bin_dir: "{{ ansible_user_dir }}/.local/bin"
+codex_share_dir: "{{ ansible_user_dir }}/.local/share/codex"
+codex_cache_dir: "{{ ansible_user_dir }}/.cache/ansible-downloads"
+
+# Codex names its artifacts with Rust target triples, not amd64/arm64.
+codex_target: >-
+  {{ 'aarch64-unknown-linux-musl'
+     if ansible_architecture == 'aarch64'
+     else 'x86_64-unknown-linux-musl' }}

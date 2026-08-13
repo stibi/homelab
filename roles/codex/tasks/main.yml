@@ -1,0 +1,84 @@
+---
+# OpenAI Codex CLI.
+#
+# Installed from the "package" tarball rather than the plain binary one for two
+# reasons. It is the only variant covered by the published SHA256SUMS, and it
+# is not just a binary: it ships a bundled ripgrep (codex-path/rg), a bwrap
+# sandbox and zsh resources (codex-resources/) that codex expects to find
+# beside itself. Extracting bin/codex alone would silently lose the sandbox.
+#
+# So it is unpacked whole into a versioned directory and symlinked onto PATH,
+# rather than dropped into ~/.local/bin like the single-binary tools.
+#
+# It is big: ~119M compressed, ~300M unpacked, of which bin/codex is 258M.
+
+- name: Assert codex is pinned for this architecture
+  ansible.builtin.assert:
+    that:
+      - codex_version | length > 0
+      - codex_sha256[codex_target] | default('') | length > 0
+    fail_msg: >-
+      codex needs a version and a sha256 for {{ codex_target }}.
+      See "Upgrading codex" in the README.
+    quiet: true
+
+- name: Ensure the codex directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - "{{ codex_bin_dir }}"
+    - "{{ codex_share_dir }}/{{ codex_version }}"
+    - "{{ codex_cache_dir }}"
+
+- name: Check whether this codex version is already unpacked
+  ansible.builtin.stat:
+    path: "{{ codex_share_dir }}/{{ codex_version }}/bin/codex"
+  register: codex_installed
+
+- name: Download the codex package
+  ansible.builtin.get_url:
+    url: >-
+      https://github.com/openai/codex/releases/download/rust-v{{ codex_version }}/codex-package-{{ codex_target }}.tar.gz
+    dest: "{{ codex_cache_dir }}/codex-{{ codex_version }}.tar.gz"
+    checksum: "sha256:{{ codex_sha256[codex_target] }}"
+    mode: "0644"
+  when:
+    - not codex_installed.stat.exists
+    - not ansible_check_mode
+
+- name: Unpack codex into its versioned directory
+  ansible.builtin.unarchive:
+    src: "{{ codex_cache_dir }}/codex-{{ codex_version }}.tar.gz"
+    dest: "{{ codex_share_dir }}/{{ codex_version }}"
+    remote_src: true
+  when:
+    - not codex_installed.stat.exists
+    - not ansible_check_mode
+
+# The symlink is what makes `codex` resolve on PATH, and re-pointing it is all
+# a version bump needs. Old versions are left in place — remove them by hand.
+- name: Link codex onto PATH
+  ansible.builtin.file:
+    src: "{{ codex_share_dir }}/{{ codex_version }}/bin/codex"
+    dest: "{{ codex_bin_dir }}/codex"
+    state: link
+    force: true
+  when: not ansible_check_mode
+
+- name: Read back the installed codex version
+  ansible.builtin.command:
+    cmd: "{{ codex_bin_dir }}/codex --version"
+  changed_when: false
+  when: not ansible_check_mode
+  register: codex_reported
+
+- name: Assert codex matches the pinned version
+  ansible.builtin.assert:
+    that:
+      - codex_version in codex_reported.stdout
+    fail_msg: >-
+      Expected {{ codex_version }} but codex reports
+      "{{ codex_reported.stdout | default('') | trim }}".
+    quiet: true
+  when: not ansible_check_mode

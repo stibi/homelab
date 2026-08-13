@@ -18,3 +18,5 @@
       tags: [cli_tools, cli]
     - role: codex
       tags: [codex]
+    - role: node_exporter
+      tags: [node_exporter, monitoring]

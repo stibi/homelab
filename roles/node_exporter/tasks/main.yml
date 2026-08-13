@@ -1,0 +1,119 @@
+---
+# Prometheus node_exporter, from the Debian package.
+#
+# Unlike the CLI tools, this one is a system service, and the package already
+# ships the parts that are tedious to hand-roll: a dedicated `prometheus` user,
+# a hardened systemd unit, and an EnvironmentFile for arguments. Debian 13 has
+# 1.9.0 against 1.12.1 upstream, which for node_exporter is an acceptable gap
+# in exchange for not maintaining a unit file here.
+
+- name: Install node_exporter
+  become: true
+  ansible.builtin.apt:
+    name: "{{ node_exporter_package }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+# --- work out what to listen on ----------------------------------------
+
+- name: Discover the Tailscale IPv4 address
+  ansible.builtin.command:
+    cmd: tailscale ip -4
+  register: node_exporter_ts_ip
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: node_exporter_bind_tailscale
+
+- name: Assert a Tailscale address was found
+  ansible.builtin.assert:
+    that:
+      - node_exporter_ts_ip.rc == 0
+      - (node_exporter_ts_ip.stdout | trim) | length > 0
+    fail_msg: >-
+      node_exporter_bind_tailscale is set but `tailscale ip -4` returned
+      nothing. Either bring Tailscale up, or set
+      node_exporter_bind_tailscale=false to bind
+      {{ node_exporter_listen_address }} instead.
+    quiet: true
+  when: node_exporter_bind_tailscale
+
+- name: Resolve the listen address
+  ansible.builtin.set_fact:
+    node_exporter_bind: >-
+      {{ ((node_exporter_ts_ip.stdout_lines | first | trim)
+          if node_exporter_bind_tailscale
+          else node_exporter_listen_address) ~ ':' ~ node_exporter_port }}
+
+# --- configure ---------------------------------------------------------
+
+# Everything below touches files the package owns, so it is skipped under
+# --check where the apt task above was a no-op and those files do not exist yet.
+- name: Configure and start node_exporter
+  become: true
+  when: not ansible_check_mode
+  block:
+    # The packaged unit is ExecStart=/usr/bin/prometheus-node-exporter $ARGS
+    # with EnvironmentFile=/etc/default/prometheus-node-exporter, so setting
+    # ARGS is the supported way to pass flags without overriding the unit.
+    - name: Set the node_exporter arguments
+      ansible.builtin.lineinfile:
+        path: "{{ node_exporter_defaults_file }}"
+        regexp: '^ARGS='
+        line: 'ARGS="--web.listen-address={{ node_exporter_bind }}{{ (" " ~ node_exporter_extra_args) if node_exporter_extra_args else "" }}"'
+      notify: Restart node_exporter
+
+    - name: Ensure the systemd drop-in directory exists
+      ansible.builtin.file:
+        path: /etc/systemd/system/{{ node_exporter_service }}.service.d
+        state: directory
+        mode: "0755"
+      when: node_exporter_bind_tailscale
+
+    # Binding a specific Tailscale address means the interface has to exist
+    # first, otherwise the service fails to bind at boot and stays down.
+    - name: Order node_exporter after tailscaled
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/{{ node_exporter_service }}.service.d/tailscale.conf
+        mode: "0644"
+        content: |
+          # Managed by Ansible (homelab, node_exporter role).
+          [Unit]
+          After=tailscaled.service
+          Wants=tailscaled.service
+
+          [Service]
+          Restart=on-failure
+          RestartSec=5
+      when: node_exporter_bind_tailscale
+      notify: Restart node_exporter
+
+    - name: Enable and start node_exporter
+      ansible.builtin.systemd_service:
+        name: "{{ node_exporter_service }}"
+        enabled: true
+        state: started
+        daemon_reload: true
+
+# --- verify ------------------------------------------------------------
+
+- name: Flush handlers so the check below sees the final config
+  ansible.builtin.meta: flush_handlers
+
+- name: Verify the metrics endpoint responds
+  ansible.builtin.uri:
+    url: "http://{{ node_exporter_bind }}/metrics"
+    return_content: false
+    status_code: 200
+  register: node_exporter_probe
+  retries: 5
+  delay: 2
+  until: node_exporter_probe is succeeded
+  when: not ansible_check_mode
+
+- name: Report the scrape target
+  ansible.builtin.debug:
+    msg: >-
+      node_exporter is listening on {{ node_exporter_bind }} —
+      scrape it at http://{{ node_exporter_bind }}/metrics

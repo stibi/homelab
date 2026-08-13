@@ -22,6 +22,7 @@ roles/
   asdf/                           asdf plugins and pinned versions (pre-commit)
   cli_tools/                      gh, glab, cue, flux from release tarballs
   codex/                          OpenAI Codex CLI
+  node_exporter/                  Prometheus node_exporter, bound to Tailscale
 Makefile                          check / apply wrappers
 ```
 
@@ -139,6 +140,30 @@ Things that bite when bumping these:
 
 Both `gh` and `glab` exist in Debian 13, but lag badly — 2.46.0 vs 2.97.0 and
 1.53.0 vs 1.113.0 — which is why they come from upstream releases instead.
+
+## node_exporter
+
+Installed from the Debian package rather than an upstream binary. Debian 13
+carries 1.9.0 against 1.12.1 upstream, but the package brings a dedicated
+`prometheus` user, a hardened systemd unit and an `EnvironmentFile` for
+arguments — worth more here than the version delta.
+
+**It binds the host's Tailscale address, not `0.0.0.0`.** This host has no
+active firewall (`INPUT` policy is `ACCEPT`; only Tailscale's and Docker's own
+chains exist), so listening on all interfaces would serve machine metrics to
+the home LAN too. The point of running it is to be scraped over Tailscale, so
+it listens there and nowhere else. A systemd drop-in orders it after
+`tailscaled` so the address exists before it tries to bind.
+
+To listen everywhere instead, set in `group_vars`:
+
+```yaml
+node_exporter_bind_tailscale: false
+node_exporter_listen_address: "0.0.0.0"
+```
+
+The role prints the resulting scrape target at the end of a run, and probes
+`/metrics` to confirm the service actually came up.
 
 ## Upgrading codex
 

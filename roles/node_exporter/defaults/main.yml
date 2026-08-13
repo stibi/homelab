@@ -1,0 +1,20 @@
+---
+# Bind to the host's Tailscale address rather than 0.0.0.0.
+#
+# This host has no active firewall (INPUT policy is ACCEPT; only Tailscale's
+# and Docker's own chains exist), so listening on all interfaces would publish
+# machine metrics to the home LAN as well. The reason node_exporter is here at
+# all is to be scraped over Tailscale, so binding to that interface keeps
+# exposure to the tailnet without needing firewall rules.
+#
+# Set this to false to fall back to node_exporter_listen_address as-is.
+node_exporter_bind_tailscale: true
+node_exporter_listen_address: "0.0.0.0"
+node_exporter_port: 9100
+
+node_exporter_package: prometheus-node-exporter
+node_exporter_service: prometheus-node-exporter
+node_exporter_defaults_file: /etc/default/prometheus-node-exporter
+
+# Extra flags appended after --web.listen-address.
+node_exporter_extra_args: ""

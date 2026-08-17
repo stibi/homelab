@@ -170,6 +170,18 @@ cli_tools:
       amd64: c2c397a52930f52d2005c01d276116b059d062de379386d58e98115380a766a2
       arm64: dcab945f8d8658662fa1db93e150a602ba1f91da367a82e099bd65595fc7c62c
 
+  # Note the capital L in "Linux" — k9s is the only one here that capitalises
+  # it, and the lowercase spelling 404s. Its version flag is `version --short`,
+  # not `--version`.
+  - name: k9s
+    version: 0.51.0
+    url: https://github.com/derailed/k9s/releases/download/v0.51.0/k9s_Linux_{{ cli_tools_arch }}.tar.gz
+    archive_path: k9s
+    version_args: version --short
+    sha256:
+      amd64: c3752ad51a5a4015a113819c4eeb6e55a4d0e4b8e652494797532f6fc8161dd7
+      arm64: 3ee05c82e5f9198928a4e86133608ba6a2c10a2244d6a7789e820f78319d640c
+
 # --- codex role --------------------------------------------------------
 
 # The upstream tag is "rust-v0.147.0" while the version itself is 0.147.0;

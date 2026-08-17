@@ -18,5 +18,7 @@
       tags: [cli_tools, cli]
     - role: codex
       tags: [codex]
+    - role: krr
+      tags: [krr]
     - role: node_exporter
       tags: [node_exporter, monitoring]

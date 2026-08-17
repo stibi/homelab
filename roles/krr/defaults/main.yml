@@ -1,0 +1,12 @@
+---
+# Overridden in inventory/group_vars/workstations.yml.
+krr_version: ""
+krr_sha256: ""
+
+krr_bin_dir: "{{ ansible_user_dir }}/.local/bin"
+krr_share_dir: "{{ ansible_user_dir }}/.local/share/krr"
+krr_cache_dir: "{{ ansible_user_dir }}/.cache/ansible-downloads"
+
+# Upstream ships a single linux build, named after the GitHub runner that
+# produced it rather than an architecture. There is no arm64 artifact.
+krr_asset: "krr-ubuntu-latest-v{{ krr_version }}.zip"

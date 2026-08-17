@@ -1,0 +1,100 @@
+---
+# Robusta KRR (Kubernetes Resource Recommender).
+#
+# Shipped only as a zip containing a PyInstaller "onedir" bundle: krr/krr next
+# to a krr/_internal/ tree of shared objects and a bundled CPython. The binary
+# will not run without its siblings, so — like codex — this unpacks whole into
+# a versioned directory and symlinks onto PATH rather than dropping a single
+# file into ~/.local/bin.
+#
+# Verified against the real artifact: the bundle runs correctly through a
+# symlink (PyInstaller resolves the executable's real path), and the
+# ubuntu-latest build runs fine on Debian 13.
+#
+# amd64 only — upstream publishes no arm64 linux build.
+
+- name: Assert krr is pinned
+  ansible.builtin.assert:
+    that:
+      - krr_version | length > 0
+      - krr_sha256 | length > 0
+    fail_msg: "krr_version and krr_sha256 must both be set."
+    quiet: true
+
+- name: Assert this host is amd64
+  ansible.builtin.assert:
+    that:
+      - ansible_architecture == 'x86_64'
+    fail_msg: >-
+      krr publishes only an x86_64 linux build; this host is
+      {{ ansible_architecture }}.
+    quiet: true
+
+- name: Ensure the krr directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - "{{ krr_bin_dir }}"
+    - "{{ krr_share_dir }}/{{ krr_version }}"
+    - "{{ krr_cache_dir }}"
+
+- name: Check whether this krr version is already unpacked
+  ansible.builtin.stat:
+    path: "{{ krr_share_dir }}/{{ krr_version }}/krr/krr"
+  register: krr_installed
+
+# Upstream publishes no checksum file for krr, so this sha256 was computed from
+# the artifact and pins it from here on — the same trust-on-first-use situation
+# as kubie and cue.
+- name: Download the krr bundle
+  ansible.builtin.get_url:
+    url: "https://github.com/robusta-dev/krr/releases/download/v{{ krr_version }}/{{ krr_asset }}"
+    dest: "{{ krr_cache_dir }}/{{ krr_asset }}"
+    checksum: "sha256:{{ krr_sha256 }}"
+    mode: "0644"
+  when:
+    - not krr_installed.stat.exists
+    - not ansible_check_mode
+
+# unzip comes from base_packages; ansible's unarchive shells out to it for zips.
+- name: Unpack krr into its versioned directory
+  ansible.builtin.unarchive:
+    src: "{{ krr_cache_dir }}/{{ krr_asset }}"
+    dest: "{{ krr_share_dir }}/{{ krr_version }}"
+    remote_src: true
+  when:
+    - not krr_installed.stat.exists
+    - not ansible_check_mode
+
+- name: Ensure the krr binary is executable
+  ansible.builtin.file:
+    path: "{{ krr_share_dir }}/{{ krr_version }}/krr/krr"
+    mode: "0755"
+  when: not ansible_check_mode
+
+- name: Link krr onto PATH
+  ansible.builtin.file:
+    src: "{{ krr_share_dir }}/{{ krr_version }}/krr/krr"
+    dest: "{{ krr_bin_dir }}/krr"
+    state: link
+    force: true
+  when: not ansible_check_mode
+
+# `krr --version` does not exist; the subcommand is `krr version`.
+- name: Read back the installed krr version
+  ansible.builtin.command:
+    cmd: "{{ krr_bin_dir }}/krr version"
+  changed_when: false
+  when: not ansible_check_mode
+  register: krr_reported
+
+- name: Assert krr matches the pinned version
+  ansible.builtin.assert:
+    that:
+      - krr_version in krr_reported.stdout
+    fail_msg: >-
+      Expected {{ krr_version }} but krr reports
+      "{{ krr_reported.stdout | default('') | trim }}".
+    quiet: true
+  when: not ansible_check_mode

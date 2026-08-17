@@ -22,6 +22,7 @@ roles/
   asdf/                           asdf plugins and pinned versions (pre-commit)
   cli_tools/                      gh, glab, cue, flux from release tarballs
   codex/                          OpenAI Codex CLI
+  krr/                            Robusta KRR (PyInstaller bundle)
   node_exporter/                  Prometheus node_exporter, bound to Tailscale
 Makefile                          check / apply wrappers
 ```
@@ -140,6 +141,26 @@ Things that bite when bumping these:
 
 Both `gh` and `glab` exist in Debian 13, but lag badly — 2.46.0 vs 2.97.0 and
 1.53.0 vs 1.113.0 — which is why they come from upstream releases instead.
+
+## Upgrading krr
+
+```sh
+V=$(curl -sL https://api.github.com/repos/robusta-dev/krr/releases/latest \
+    | sed -n 's/.*"tag_name": "v\([^"]*\)".*/\1/p') && echo "$V"
+curl -sL "https://github.com/robusta-dev/krr/releases/download/v$V/krr-ubuntu-latest-v$V.zip" | sha256sum
+```
+
+krr publishes no checksum file, so its sha256 has to be computed by hand.
+
+Like codex, it is not a lone binary: the zip holds a PyInstaller *onedir*
+bundle (`krr/krr` beside a `krr/_internal/` tree with a bundled CPython), so it
+unpacks whole into `~/.local/share/krr/<version>/` and is symlinked onto PATH.
+The bundle runs correctly through that symlink — PyInstaller resolves the
+executable's real path — and the `ubuntu-latest` build runs fine on Debian 13.
+
+Two gotchas: the asset is named after the GitHub runner (`ubuntu-latest`) not
+an architecture, and there is **no arm64 linux build** — the role asserts on
+non-x86_64. Its version subcommand is `krr version`, not `--version`.
 
 ## node_exporter
 

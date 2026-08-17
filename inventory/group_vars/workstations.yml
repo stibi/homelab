@@ -192,3 +192,12 @@ codex_version: 0.147.0
 codex_sha256:
   x86_64-unknown-linux-musl: bd758d53d56e41dc65e045f4589df79a038ed197a011adcb52a258e6ad64cfda
   aarch64-unknown-linux-musl: 89cbf79bd5ae6f9c58da47e8079f311c84219350c9c43c070d42f3e9b2a81401
+
+# --- krr role ----------------------------------------------------------
+
+# Robusta KRR. Upstream publishes no checksum file, so this sha256 was computed
+# from the v1.29.0 artifact on 2026-08-17 and pins it from here on — same
+# trust-on-first-use situation as kubie and cue. amd64 only; there is no arm64
+# linux build.
+krr_version: 1.29.0
+krr_sha256: 0affa7b4ded83a23c8f561fe429595c4ec94f1ea7dc06f145504ce99b453c859

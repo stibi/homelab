@@ -1,0 +1,139 @@
+---
+# hunk (hunk.dev) — built from source rather than installed from a release.
+#
+# This is not a preference. This host is a Xeon E5-2680 v2 (Ivy Bridge) with
+# AVX but no AVX2, and upstream's prebuilt linux-x64 binary dies with SIGILL
+# (exit 132) on it. Building locally sidesteps that: the `bun` npm package's
+# postinstall reads /proc/cpuinfo, finds no avx2, and fetches the
+# bun-linux-x64-baseline runtime, which `bun build --compile` then embeds. The
+# resulting binary reports "Bun v1.3.14 (Linux x64 baseline)" and runs fine.
+#
+# So this role must NOT be "simplified" into a get_url of the release tarball.
+# That is exactly what does not work here.
+
+- name: Assert a hunk version is pinned
+  ansible.builtin.assert:
+    that:
+      - hunk_version | length > 0
+    fail_msg: "hunk_version must be set (e.g. 0.19.0)."
+    quiet: true
+
+- name: Check whether this hunk version is already built
+  ansible.builtin.stat:
+    path: "{{ hunk_share_dir }}/{{ hunk_version }}/hunk"
+  register: hunk_installed
+
+# Everything below is skipped once the version is in place, so a re-run costs
+# nothing and a version bump triggers a fresh build.
+- name: Build and install hunk
+  when:
+    - not hunk_installed.stat.exists
+    - not ansible_check_mode
+  environment:
+    PATH: "{{ hunk_path_prepend }}:{{ ansible_env.PATH }}"
+  block:
+    - name: Confirm the build toolchain is present
+      ansible.builtin.command:
+        cmd: "{{ item }} --version"
+      changed_when: false
+      loop: [bun, node, git]
+      loop_control:
+        label: "{{ item }}"
+      register: hunk_toolchain
+      failed_when: hunk_toolchain.rc != 0
+
+    - name: Check out hunk at v{{ hunk_version }}
+      ansible.builtin.git:
+        repo: "{{ hunk_repo }}"
+        dest: "{{ hunk_build_dir }}/{{ hunk_version }}"
+        version: "v{{ hunk_version }}"
+        depth: 1
+        force: true
+
+    # --ignore-scripts on purpose: the root package's `prepare` hook runs
+    # simple-git-hooks, which fails outside a normal dev checkout and would
+    # abort the whole install. Skipping scripts also skips bun's own
+    # postinstall, which the next task runs explicitly.
+    - name: Install dependencies
+      ansible.builtin.command:
+        cmd: bun install --ignore-scripts
+        chdir: "{{ hunk_build_dir }}/{{ hunk_version }}"
+      changed_when: true
+
+    # This is the task that makes the whole thing work on this CPU: it detects
+    # the missing avx2 and pulls the baseline bun runtime that gets embedded
+    # into the compiled binary.
+    - name: Fetch the matching bun runtime (baseline on non-AVX2 CPUs)
+      ansible.builtin.command:
+        cmd: node install.js
+        chdir: "{{ hunk_build_dir }}/{{ hunk_version }}/node_modules/bun"
+      changed_when: true
+
+    - name: Report which bun variant will be embedded
+      ansible.builtin.command:
+        cmd: ./node_modules/bun/bin/bun.exe --revision
+        chdir: "{{ hunk_build_dir }}/{{ hunk_version }}"
+      changed_when: false
+      register: hunk_bun_variant
+
+    - name: Compile the binary
+      ansible.builtin.command:
+        cmd: bun run build:bin
+        chdir: "{{ hunk_build_dir }}/{{ hunk_version }}"
+      changed_when: true
+
+    # --- install ---------------------------------------------------------
+
+    - name: Create the versioned install directory
+      ansible.builtin.file:
+        path: "{{ hunk_share_dir }}/{{ hunk_version }}/skills"
+        state: directory
+        mode: "0755"
+
+    - name: Install the binary
+      ansible.builtin.copy:
+        src: "{{ hunk_build_dir }}/{{ hunk_version }}/dist/hunk"
+        dest: "{{ hunk_share_dir }}/{{ hunk_version }}/hunk"
+        remote_src: true
+        mode: "0755"
+
+    # `hunk skill path` resolves these relative to the resolved binary, so they
+    # have to sit beside the real file, not beside the symlink.
+    - name: Install the bundled skills
+      ansible.builtin.copy:
+        src: "{{ hunk_build_dir }}/{{ hunk_version }}/skills/{{ item }}"
+        dest: "{{ hunk_share_dir }}/{{ hunk_version }}/skills/"
+        remote_src: true
+        mode: preserve
+      loop: "{{ hunk_skills }}"
+
+    - name: Drop the build tree
+      ansible.builtin.file:
+        path: "{{ hunk_build_dir }}/{{ hunk_version }}"
+        state: absent
+      when: not hunk_keep_build_dir
+
+- name: Link hunk onto PATH
+  ansible.builtin.file:
+    src: "{{ hunk_share_dir }}/{{ hunk_version }}/hunk"
+    dest: "{{ hunk_bin_dir }}/hunk"
+    state: link
+    force: true
+  when: not ansible_check_mode
+
+- name: Read back the installed hunk version
+  ansible.builtin.command:
+    cmd: "{{ hunk_bin_dir }}/hunk --version"
+  changed_when: false
+  when: not ansible_check_mode
+  register: hunk_reported
+
+- name: Assert hunk matches the pinned version
+  ansible.builtin.assert:
+    that:
+      - hunk_version in hunk_reported.stdout
+    fail_msg: >-
+      Expected {{ hunk_version }} but hunk reports
+      "{{ hunk_reported.stdout | default('') | trim }}".
+    quiet: true
+  when: not ansible_check_mode

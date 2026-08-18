@@ -1,0 +1,23 @@
+---
+# Overridden in inventory/group_vars/workstations.yml.
+hunk_version: ""
+
+hunk_repo: https://github.com/modem-dev/hunk.git
+
+hunk_bin_dir: "{{ ansible_user_dir }}/.local/bin"
+hunk_share_dir: "{{ ansible_user_dir }}/.local/share/hunk"
+hunk_build_dir: "{{ ansible_user_dir }}/.cache/hunk-build"
+
+# The build tree is ~460M of node_modules plus a 161M binary, so it is removed
+# once the install succeeds. Set true to keep it for debugging a failed build.
+hunk_keep_build_dir: false
+
+# Skills shipped beside the binary. These two are what upstream's own release
+# artifact contains; the repo also carries maintainer-only skills
+# (hunk-release, hunk-launch-video) that a normal install does not get.
+hunk_skills:
+  - hunk-review
+  - hunk-extensions
+
+# bun and node come from asdf, which is managed by hand on this host.
+hunk_path_prepend: "{{ ansible_user_dir }}/.asdf/shims:{{ ansible_user_dir }}/.asdf/bin"

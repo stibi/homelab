@@ -20,5 +20,7 @@
       tags: [codex]
     - role: krr
       tags: [krr]
+    - role: hunk
+      tags: [hunk]
     - role: node_exporter
       tags: [node_exporter, monitoring]

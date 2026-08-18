@@ -201,3 +201,11 @@ codex_sha256:
 # linux build.
 krr_version: 1.29.0
 krr_sha256: 0affa7b4ded83a23c8f561fe429595c4ec94f1ea7dc06f145504ce99b453c859
+
+# --- hunk role ---------------------------------------------------------
+
+# Built from source, not downloaded. This host's CPU (Xeon E5-2680 v2, Ivy
+# Bridge) has AVX but no AVX2, and upstream's prebuilt linux-x64 binary dies
+# with SIGILL on it. A local build embeds the baseline bun runtime instead.
+# No checksum to pin — the artifact is produced here, from a git tag.
+hunk_version: 0.19.0

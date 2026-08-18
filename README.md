@@ -23,6 +23,7 @@ roles/
   cli_tools/                      gh, glab, cue, flux from release tarballs
   codex/                          OpenAI Codex CLI
   krr/                            Robusta KRR (PyInstaller bundle)
+  hunk/                           hunk, compiled from source (CPU has no AVX2)
   node_exporter/                  Prometheus node_exporter, bound to Tailscale
 Makefile                          check / apply wrappers
 ```
@@ -141,6 +142,41 @@ Things that bite when bumping these:
 
 Both `gh` and `glab` exist in Debian 13, but lag badly — 2.46.0 vs 2.97.0 and
 1.53.0 vs 1.113.0 — which is why they come from upstream releases instead.
+
+## hunk — why it is compiled, not downloaded
+
+Bump `hunk_version` in `inventory/group_vars/workstations.yml` and re-run. The
+role checks out that git tag, builds, and installs. There is no checksum to
+pin because the artifact is produced locally.
+
+**Do not "simplify" this into a `get_url` of the release tarball.** This host
+is a Xeon E5-2680 v2 (Ivy Bridge): it has AVX but **no AVX2**, and upstream's
+prebuilt `hunkdiff-linux-x64` binary dies immediately with `SIGILL` (exit 132).
+That is the physical silicon, so no Proxmox CPU-model change fixes it.
+
+Building locally works because of one specific link in the chain: the `bun` npm
+package's postinstall reads `/proc/cpuinfo`, sees no `avx2`, and fetches the
+**`bun-linux-x64-baseline`** runtime, which `bun build --compile` then embeds.
+The result reports `Bun v1.3.14 (Linux x64 baseline)` and runs.
+
+Two non-obvious details the role depends on:
+
+- Dependencies install with `--ignore-scripts`, because the root package's
+  `prepare` hook runs `simple-git-hooks`, which fails outside a normal dev
+  checkout and aborts the whole install. That also skips bun's own postinstall,
+  so the role runs `node node_modules/bun/install.js` explicitly — that is the
+  step that selects the baseline runtime, and skipping it produces a binary
+  that SIGILLs exactly like the prebuilt one.
+- The binary is installed to `~/.local/share/hunk/<version>/` with its skills
+  beside it and symlinked to `~/.local/bin/hunk`. `hunk skill path` resolves
+  skills relative to the *resolved* binary, so they must sit next to the real
+  file, not next to the symlink.
+
+The build tree (~460M of node_modules plus a 161M binary) is removed after a
+successful install; set `hunk_keep_build_dir: true` to keep it.
+
+Requires `bun` and `node`, both of which come from the hand-managed asdf
+install on this host.
 
 ## Upgrading krr
 

@@ -62,6 +62,7 @@ shell_stow_targets:
   - "{{ ansible_user_dir }}/.zshrc.d"
   - "{{ ansible_user_dir }}/.config/starship.toml"
   - "{{ ansible_user_dir }}/.kube/kubie.yaml"
+  - "{{ ansible_user_dir }}/.claude/statusline.sh"
 
 # --- kubernetes role ---------------------------------------------------
 

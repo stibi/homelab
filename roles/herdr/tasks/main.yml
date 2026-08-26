@@ -1,0 +1,81 @@
+---
+# herdr — terminal workspace manager for coding agents.
+#
+# IMPORTANT: this role replaces the binary on disk only. It deliberately does
+# NOT stop, restart or hand off the running server, because doing so kills
+# every pane process in the session — including any agent running in one.
+# Applying this role while a session is live leaves the old server running;
+# `herdr status` will then report a client/server version skew until you
+# restart it yourself. See "herdr" in the README for the two ways to do that.
+#
+# herdr also ships its own updater (`herdr update`, `herdr channel`). That and
+# this role are two sources of truth for the same file: a self-update installs
+# whatever the channel offers, and the next Ansible run pins it back. Use one
+# or the other, not both. Managing it here is the choice consistent with the
+# rest of this repo; if you would rather use the built-in updater, drop this
+# role rather than letting them fight.
+
+- name: Assert herdr is pinned for this architecture
+  ansible.builtin.assert:
+    that:
+      - herdr_version | length > 0
+      - herdr_sha256[herdr_arch] | default('') | length > 0
+    fail_msg: >-
+      herdr needs a version and a sha256 for {{ herdr_arch }}.
+      See "herdr" in the README.
+    quiet: true
+
+- name: Ensure the local bin directory exists
+  ansible.builtin.file:
+    path: "{{ herdr_bin_dir }}"
+    state: directory
+
+# Upstream publishes no checksum file with its releases, so this sha256 was
+# computed from the artifact and pins it from here on — as with kubie and cue.
+- name: Install herdr {{ herdr_version }}
+  ansible.builtin.get_url:
+    url: >-
+      https://github.com/herdrdev/herdr/releases/download/v{{ herdr_version }}/herdr-linux-{{ herdr_arch }}
+    dest: "{{ herdr_bin_dir }}/herdr"
+    checksum: "sha256:{{ herdr_sha256[herdr_arch] }}"
+    mode: "0755"
+  register: herdr_download
+
+- name: Read back the installed herdr version
+  ansible.builtin.command:
+    cmd: "{{ herdr_bin_dir }}/herdr --version"
+  changed_when: false
+  when: not ansible_check_mode
+  register: herdr_reported
+
+- name: Assert the binary on disk matches the pinned version
+  ansible.builtin.assert:
+    that:
+      - herdr_version in herdr_reported.stdout
+    fail_msg: >-
+      Expected {{ herdr_version }} but the binary reports
+      "{{ herdr_reported.stdout | default('') | trim }}".
+    quiet: true
+  when: not ansible_check_mode
+
+# A running server keeps serving the old version until it is restarted, so say
+# so plainly rather than letting a green run imply the upgrade is live.
+- name: Check whether a herdr server is currently running
+  ansible.builtin.command:
+    cmd: "{{ herdr_bin_dir }}/herdr status server"
+  changed_when: false
+  failed_when: false
+  when: not ansible_check_mode
+  register: herdr_server_status
+
+- name: Warn if the running server still serves the previous version
+  ansible.builtin.debug:
+    msg: >-
+      herdr {{ herdr_version }} is on disk, but a server is still running the
+      version it started with. Restart it yourself when convenient —
+      `herdr update --handoff` keeps panes alive, `herdr server stop` does not.
+  when:
+    - not ansible_check_mode
+    - herdr_download is changed
+    - herdr_server_status.rc == 0
+    - "'running' in (herdr_server_status.stdout | default(''))"

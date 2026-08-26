@@ -24,6 +24,7 @@ roles/
   codex/                          OpenAI Codex CLI
   krr/                            Robusta KRR (PyInstaller bundle)
   hunk/                           hunk, compiled from source (CPU has no AVX2)
+  herdr/                          herdr binary (does NOT restart the server)
   node_exporter/                  Prometheus node_exporter, bound to Tailscale
 Makefile                          check / apply wrappers
 ```
@@ -142,6 +143,38 @@ Things that bite when bumping these:
 
 Both `gh` and `glab` exist in Debian 13, but lag badly — 2.46.0 vs 2.97.0 and
 1.53.0 vs 1.113.0 — which is why they come from upstream releases instead.
+
+## herdr
+
+Bump `herdr_version` and its `herdr_sha256` entry in
+`inventory/group_vars/workstations.yml`. Upstream publishes no checksum file,
+so compute it:
+
+```sh
+curl -sL https://github.com/herdrdev/herdr/releases/download/v<VER>/herdr-linux-x86_64 | sha256sum
+```
+
+**The role only replaces the binary on disk.** It does not stop, restart or
+hand off a running server, because that kills every pane process in the
+session — including any agent running in one. After applying, `herdr status`
+will report a client/server version skew until you restart it yourself:
+
+| Action | Layout | Pane processes / agents |
+|---|---|---|
+| `herdr update --handoff` | kept | **kept** (experimental live handoff) |
+| `herdr server stop`, then relaunch | restored from `session.json` | **lost** |
+| Machine reboot | restored from `session.json` | **lost** |
+| Detach (`prefix q`) | kept | kept — server keeps running |
+
+Config-only changes need no restart at all: `herdr server reload-config`
+re-reads `config.toml` in place.
+
+herdr also ships its own updater (`herdr update`, `herdr channel`). That and
+this role are two sources of truth for the same file — a self-update installs
+whatever the channel offers, and the next Ansible run pins it back. Use one or
+the other. Managing it here is the choice consistent with the rest of this
+repo; if you prefer the built-in updater, delete this role rather than letting
+them fight.
 
 ## hunk — why it is compiled, not downloaded
 

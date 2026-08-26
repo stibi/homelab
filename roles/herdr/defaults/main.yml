@@ -1,0 +1,9 @@
+---
+# Overridden in inventory/group_vars/workstations.yml.
+herdr_version: ""
+herdr_sha256: {}
+
+herdr_bin_dir: "{{ ansible_user_dir }}/.local/bin"
+
+# herdr names its assets by uname-style arch, not amd64/arm64.
+herdr_arch: "{{ 'aarch64' if ansible_architecture == 'aarch64' else 'x86_64' }}"

@@ -209,3 +209,15 @@ krr_sha256: 0affa7b4ded83a23c8f561fe429595c4ec94f1ea7dc06f145504ce99b453c859
 # with SIGILL on it. A local build embeds the baseline bun runtime instead.
 # No checksum to pin — the artifact is produced here, from a git tag.
 hunk_version: 0.20.0
+
+# --- herdr role --------------------------------------------------------
+
+# Upstream publishes no checksum file, so these were computed from the v0.8.2
+# artifacts on 2026-08-26 and pin them from here on.
+#
+# Note this role only swaps the binary; a running server keeps serving its old
+# version until restarted. See "herdr" in the README.
+herdr_version: 0.8.2
+herdr_sha256:
+  x86_64: 976150a14d490c94b243ea2e1a7eb2dfb67f12e36b182db90936f6728e6aecf4
+  aarch64: f55610658e1c2e0d2aaef730b4b2ab885f7f8ba00285ab372bfb14f2e3d5b40d

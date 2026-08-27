@@ -118,6 +118,16 @@ asdf_tools:
   - name: pre-commit
     version: 4.6.2
 
+  # From the asdf-community/asdf-hashicorp plugin, which verifies the release
+  # signature with gpg. 1.16.0 satisfies every active required_version in
+  # devops/iac — the strictest is `~> 1.15`, and the pessimistic operator lets
+  # the rightmost component increment, so it admits 1.16.
+  #
+  # asdf keeps versions side by side, so this global pin is not binding: drop a
+  # .tool-versions in a repo that needs a different one.
+  - name: terraform
+    version: 1.16.0
+
 # --- cli_tools role ----------------------------------------------------
 
 # Release tarballs, pinned and checksum-verified. Versions current as of

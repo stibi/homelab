@@ -25,6 +25,7 @@ roles/
   krr/                            Robusta KRR (PyInstaller bundle)
   hunk/                           hunk, compiled from source (CPU has no AVX2)
   herdr/                          herdr binary (does NOT restart the server)
+  onepassword/                    1Password CLI from the vendor's signed apt repo
   node_exporter/                  Prometheus node_exporter, bound to Tailscale
 Makefile                          check / apply wrappers
 ```
@@ -143,6 +144,28 @@ Things that bite when bumping these:
 
 Both `gh` and `glab` exist in Debian 13, but lag badly — 2.46.0 vs 2.97.0 and
 1.53.0 vs 1.113.0 — which is why they come from upstream releases instead.
+
+## 1Password CLI
+
+Installed from 1Password's own signed apt repository, which is a deliberate
+departure from how other CLI tools here are handled. `op` hands out
+credentials, so authenticating the binary matters more than consistency:
+
+| route | verification |
+|---|---|
+| asdf plugin (`NeoHsu/asdf-1password-cli`) | none — downloads a zip and unzips it |
+| pinned `get_url` | trust-on-first-use; the checksum would be ours, not upstream's |
+| **vendor apt repo** | **GPG-signed, verified by apt on every package and upgrade** |
+
+`deb822_repository` takes the key URL directly and dearmors it itself, so there
+is no separate key step and no use of the deprecated `apt_key` module.
+
+The version is not pinned, matching every other apt package here — a security
+tool tracking the vendor's stable channel beats reproducing an old build.
+
+**On a headless host `op` cannot use desktop-app or biometric unlock.** Use a
+service account token (`OP_SERVICE_ACCOUNT_TOKEN`) for non-interactive access,
+or `op signin` for an interactive session.
 
 ## herdr
 

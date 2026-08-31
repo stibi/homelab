@@ -1,0 +1,9 @@
+---
+onepassword_package: 1password-cli
+
+# The repository path embeds the Debian architecture, so it is not a fixed URI.
+onepassword_deb_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
+onepassword_key_url: https://downloads.1password.com/linux/keys/1password.asc
+onepassword_repo_uri: "https://downloads.1password.com/linux/debian/{{ onepassword_deb_arch }}"
+onepassword_repo_suite: stable
+onepassword_repo_component: main

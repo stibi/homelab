@@ -1,0 +1,59 @@
+---
+# 1Password CLI (`op`).
+#
+# Installed from 1Password's own signed apt repository rather than the routes
+# used elsewhere in this repo, and the reason is the tool itself: `op` hands out
+# credentials, so how the binary is authenticated matters more than consistency.
+#
+#   - The asdf plugin (NeoHsu/asdf-1password-cli) downloads a zip and unzips it
+#     with no signature or checksum check at all.
+#   - A pinned get_url would only give trust-on-first-use, since the checksum
+#     would be one we computed ourselves rather than one upstream published.
+#   - This repository is GPG-signed by 1Password and apt verifies that signature
+#     on every package, every upgrade — the only option here with a real chain
+#     of trust back to the vendor.
+#
+# Version is deliberately not pinned, matching how every other apt package in
+# this repo is handled: a security tool tracking the vendor's stable channel is
+# worth more than reproducing an exact old build.
+
+- name: Add the 1Password apt repository
+  become: true
+  ansible.builtin.deb822_repository:
+    name: 1password
+    types: [deb]
+    uris: "{{ onepassword_repo_uri }}"
+    suites: "{{ onepassword_repo_suite }}"
+    components: "{{ onepassword_repo_component }}"
+    architectures: "{{ onepassword_deb_arch }}"
+    # Given a URL, the module fetches and dearmors the key itself, so there is
+    # no separate apt-key step (and no use of the deprecated apt_key module).
+    signed_by: "{{ onepassword_key_url }}"
+    enabled: true
+    state: present
+  register: onepassword_repo
+
+# Skipped under --check: the repository above is only simulated there, so apt
+# has no index for it yet and would fail with "No package matching".
+- name: Install the 1Password CLI
+  become: true
+  ansible.builtin.apt:
+    name: "{{ onepassword_package }}"
+    state: present
+    # Refresh when the repo definition just changed, otherwise fall back to the
+    # normal cache window.
+    update_cache: true
+    cache_valid_time: "{{ 0 if onepassword_repo is changed else 3600 }}"
+  when: not ansible_check_mode
+
+- name: Read back the installed op version
+  ansible.builtin.command:
+    cmd: op --version
+  changed_when: false
+  when: not ansible_check_mode
+  register: onepassword_reported
+
+- name: Report the installed version
+  ansible.builtin.debug:
+    msg: "1Password CLI {{ onepassword_reported.stdout | trim }}"
+  when: not ansible_check_mode

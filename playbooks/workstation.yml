@@ -24,5 +24,7 @@
       tags: [hunk]
     - role: herdr
       tags: [herdr]
+    - role: onepassword
+      tags: [onepassword, 1password, op]
     - role: node_exporter
       tags: [node_exporter, monitoring]

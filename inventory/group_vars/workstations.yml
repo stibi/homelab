@@ -18,6 +18,16 @@ base_packages:
   # hook — ruff, black, yamllint, detect-secrets — so without this, pre-commit
   # installs fine and then fails the moment it runs a real hook.
   - python3-venv
+  # Feeds a password to ssh non-interactively. ssh deliberately refuses to read
+  # one from stdin or the environment — it opens /dev/tty directly — so sshpass
+  # runs ssh inside a pseudo-terminal and answers the prompt for it.
+  #
+  # NOTE: ansible-core 2.19 no longer needs this. Its ssh connection plugin
+  # gained `password_mechanism`, defaulting to `ssh_askpass`, which uses
+  # Ansible's own bundled helper. sshpass is only used when that is explicitly
+  # set to `sshpass`. Kept because it is still what most third-party scripts and
+  # older runbooks reach for.
+  - sshpass
 
 # NOTE: neovim is deliberately NOT installed from apt on zase-prace.
 # A newer upstream build already lives in /opt/nvim-linux-x86_64 and is on

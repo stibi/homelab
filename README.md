@@ -26,6 +26,7 @@ roles/
   hunk/                           hunk, compiled from source (CPU has no AVX2)
   herdr/                          herdr binary (does NOT restart the server)
   onepassword/                    1Password CLI from the vendor's signed apt repo
+  awscli/                         AWS CLI v2, PGP-signature verified
   node_exporter/                  Prometheus node_exporter, bound to Tailscale
 Makefile                          check / apply wrappers
 ```
@@ -168,6 +169,27 @@ tool tracking the vendor's stable channel beats reproducing an old build.
 **On a headless host `op` cannot use desktop-app or biometric unlock.** Use a
 service account token (`OP_SERVICE_ACCOUNT_TOKEN`) for non-interactive access,
 or `op signin` for an interactive session.
+
+## AWS CLI
+
+Installed from AWS's own installer with its detached PGP signature verified,
+rather than from apt. Debian 13 does package awscli v2, but carries 2.23.6
+against 2.36.36 upstream — roughly a year of AWS service coverage, which
+matters on a box driving EKS daily.
+
+Verification follows the same reasoning as the 1Password CLI: this tool holds
+production AWS credentials, so the download needs a real chain of trust rather
+than a checksum computed here. The signing key is committed in
+`roles/awscli/files/aws-cli.asc` and its fingerprint is asserted after import,
+so a tampered key file cannot quietly validate a tampered installer.
+
+Bump `awscli_version` to upgrade; the role passes `--update` to the bundled
+installer when an install already exists.
+
+```sh
+curl -sSL 'https://api.github.com/repos/aws/aws-cli/tags?per_page=20' \
+  | jq -r '.[].name' | grep -E '^2\.' | head -1
+```
 
 ## herdr
 

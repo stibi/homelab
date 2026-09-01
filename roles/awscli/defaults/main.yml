@@ -1,0 +1,16 @@
+---
+# Overridden in inventory/group_vars/workstations.yml.
+awscli_version: ""
+
+# AWS names its artifacts by uname arch, not amd64/arm64.
+awscli_arch: "{{ 'aarch64' if ansible_architecture == 'aarch64' else 'x86_64' }}"
+
+# Fingerprint of the "AWS CLI Team <aws-cli@amazon.com>" signing key, asserted
+# after import so a swapped key file cannot pass unnoticed.
+awscli_key_fingerprint: FB5DB77FD5C118B80511ADA8A6310ACC4672475C
+
+awscli_install_dir: /usr/local/aws-cli
+awscli_bin_dir: /usr/local/bin
+awscli_cache_dir: "{{ ansible_user_dir }}/.cache/ansible-downloads"
+# Dedicated keyring so nothing is added to the user's default GPG keyring.
+awscli_keyring: "{{ ansible_user_dir }}/.cache/ansible-downloads/aws-cli-keyring.gpg"

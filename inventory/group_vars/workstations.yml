@@ -253,6 +253,14 @@ hunk_version: 0.20.0
 #
 # Note this role only swaps the binary; a running server keeps serving its old
 # version until restarted. See "herdr" in the README.
+# --- awscli role -------------------------------------------------------
+
+# Debian 13 does ship awscli v2, but 2.23.6 against 2.36.36 upstream — about a
+# year of AWS service coverage behind, which matters on a box driving EKS
+# daily. Comes from AWS's installer instead, with its PGP signature verified
+# against the key committed in roles/awscli/files/.
+awscli_version: 2.36.36
+
 herdr_version: 0.8.2
 herdr_sha256:
   x86_64: 976150a14d490c94b243ea2e1a7eb2dfb67f12e36b182db90936f6728e6aecf4

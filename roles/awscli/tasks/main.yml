@@ -1,0 +1,133 @@
+---
+# AWS CLI v2, from AWS's own installer with its PGP signature verified.
+#
+# Debian 13 does package awscli v2, which was a surprise — but it carries
+# 2.23.6 against 2.36.36 upstream, roughly a year of AWS service coverage. That
+# gap matters on a box used daily against EKS, so the vendor artifact wins here
+# even though apt would have been one line.
+#
+# The reasoning about verification is the same as the onepassword role: this
+# tool holds production AWS credentials, so the download needs a real chain of
+# trust rather than a checksum we computed ourselves. AWS publishes a detached
+# PGP signature for every installer, and the signing key is committed alongside
+# this role, so the fingerprint is fixed in git rather than fetched at runtime.
+
+- name: Assert an AWS CLI version is pinned
+  ansible.builtin.assert:
+    that:
+      - awscli_version | length > 0
+    fail_msg: "awscli_version must be set (e.g. 2.36.36)."
+    quiet: true
+
+- name: Read the currently installed AWS CLI version
+  ansible.builtin.command:
+    cmd: "{{ awscli_bin_dir }}/aws --version"
+  register: awscli_current
+  failed_when: false
+  changed_when: false
+  check_mode: false
+
+# Everything below is skipped once the pinned version is in place, so a re-run
+# costs one `aws --version` and a version bump reinstalls.
+- name: Install AWS CLI {{ awscli_version }}
+  when:
+    - awscli_version not in (awscli_current.stdout | default(''))
+    - not ansible_check_mode
+  block:
+    - name: Ensure the download directory exists
+      ansible.builtin.file:
+        path: "{{ awscli_cache_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Stage the AWS CLI signing key
+      ansible.builtin.copy:
+        src: aws-cli.asc
+        dest: "{{ awscli_cache_dir }}/aws-cli.asc"
+        mode: "0644"
+
+    # A dedicated keyring rather than the user's default: this key is only ever
+    # needed to check this one signature.
+    - name: Import the signing key into a dedicated keyring
+      ansible.builtin.command:
+        cmd: >-
+          gpg --no-default-keyring --keyring {{ awscli_keyring | quote }}
+          --import {{ (awscli_cache_dir ~ '/aws-cli.asc') | quote }}
+      changed_when: true
+
+    - name: Read the imported key fingerprint
+      ansible.builtin.command:
+        cmd: >-
+          gpg --no-default-keyring --keyring {{ awscli_keyring | quote }}
+          --list-keys --with-colons
+      changed_when: false
+      register: awscli_key_listing
+
+    # Without this, a tampered key file in the repo would happily verify a
+    # tampered installer. Pinning the fingerprint is what makes the signature
+    # check meaningful.
+    - name: Assert the key is the AWS CLI signing key
+      ansible.builtin.assert:
+        that:
+          - awscli_key_fingerprint in awscli_key_listing.stdout
+        fail_msg: >-
+          Imported key does not match the pinned AWS CLI fingerprint
+          {{ awscli_key_fingerprint }}.
+        quiet: true
+
+    - name: Download the installer and its signature
+      ansible.builtin.get_url:
+        url: "https://awscli.amazonaws.com/awscli-exe-linux-{{ awscli_arch }}-{{ awscli_version }}.zip{{ item }}"
+        dest: "{{ awscli_cache_dir }}/awscli-{{ awscli_version }}.zip{{ item }}"
+        mode: "0644"
+      loop: ["", ".sig"]
+      loop_control:
+        label: "awscli-{{ awscli_version }}.zip{{ item }}"
+
+    - name: Verify the installer signature
+      ansible.builtin.command:
+        cmd: >-
+          gpg --no-default-keyring --keyring {{ awscli_keyring | quote }}
+          --verify {{ (awscli_cache_dir ~ '/awscli-' ~ awscli_version ~ '.zip.sig') | quote }}
+          {{ (awscli_cache_dir ~ '/awscli-' ~ awscli_version ~ '.zip') | quote }}
+      changed_when: false
+
+    - name: Unpack the installer
+      ansible.builtin.unarchive:
+        src: "{{ awscli_cache_dir }}/awscli-{{ awscli_version }}.zip"
+        dest: "{{ awscli_cache_dir }}"
+        remote_src: true
+
+    # The bundled installer refuses to overwrite an existing install without
+    # --update, so pass it when one is already there.
+    - name: Run the AWS installer
+      become: true
+      ansible.builtin.command:
+        cmd: >-
+          {{ awscli_cache_dir }}/aws/install
+          --install-dir {{ awscli_install_dir | quote }}
+          --bin-dir {{ awscli_bin_dir | quote }}
+          {{ '--update' if (awscli_current.rc | default(1)) == 0 else '' }}
+      changed_when: true
+
+    - name: Remove the unpacked installer
+      ansible.builtin.file:
+        path: "{{ awscli_cache_dir }}/aws"
+        state: absent
+
+- name: Read back the installed AWS CLI version
+  ansible.builtin.command:
+    cmd: "{{ awscli_bin_dir }}/aws --version"
+  changed_when: false
+  when: not ansible_check_mode
+  register: awscli_reported
+
+- name: Assert the AWS CLI matches the pinned version
+  ansible.builtin.assert:
+    that:
+      - awscli_version in awscli_reported.stdout
+    fail_msg: >-
+      Expected {{ awscli_version }} but aws reports
+      "{{ awscli_reported.stdout | default('') | trim }}".
+    quiet: true
+  when: not ansible_check_mode

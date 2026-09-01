@@ -26,5 +26,7 @@
       tags: [herdr]
     - role: onepassword
       tags: [onepassword, 1password, op]
+    - role: awscli
+      tags: [awscli, aws]
     - role: node_exporter
       tags: [node_exporter, monitoring]

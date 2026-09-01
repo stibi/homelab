@@ -183,6 +183,14 @@ than a checksum computed here. The signing key is committed in
 `roles/awscli/files/aws-cli.asc` and its fingerprint is asserted after import,
 so a tampered key file cannot quietly validate a tampered installer.
 
+The role also creates `~/.aws/` (0700) with empty `config` and `credentials`
+files (0600), so they exist with tight permissions from the start rather than
+being written later under whatever umask applies. Content is never managed:
+`copy` runs with `force: false`, so a re-run cannot wipe real credentials. A
+separate `file` task enforces the mode, because `copy` with `force: false`
+skips an existing file entirely and leaves its permissions alone — a 0644
+credentials file would otherwise silently stay 0644.
+
 Bump `awscli_version` to upgrade; the role passes `--update` to the bundled
 installer when an install already exists.
 

@@ -115,6 +115,43 @@
         path: "{{ awscli_cache_dir }}/aws"
         state: absent
 
+# --- config layout -----------------------------------------------------
+#
+# Created empty so the files exist with the right permissions from the start,
+# rather than being written later by `aws configure` with whatever umask
+# happens to apply. Real content is never managed here — these hold long-lived
+# access keys and stay out of git entirely.
+
+- name: Ensure the AWS config directory exists
+  ansible.builtin.file:
+    path: "{{ awscli_config_dir }}"
+    state: directory
+    mode: "0700"
+
+# force: false means an existing file is left exactly as it is, so a re-run can
+# never wipe real credentials.
+- name: Create the AWS config files if missing
+  ansible.builtin.copy:
+    dest: "{{ awscli_config_dir }}/{{ item }}"
+    content: ""
+    force: false
+    mode: "0600"
+  loop: "{{ awscli_config_files }}"
+
+# Separate task on purpose: `copy` with force: false skips an existing file
+# entirely and does NOT correct its mode — verified, a 0644 file stayed 0644
+# and reported changed: false. Without this, a credentials file that already
+# existed with loose permissions would silently keep them.
+# Skipped under --check, where `state: file` would fail on the path the
+# simulated copy above did not actually create.
+- name: Enforce permissions on the AWS config files
+  ansible.builtin.file:
+    path: "{{ awscli_config_dir }}/{{ item }}"
+    state: file
+    mode: "0600"
+  loop: "{{ awscli_config_files }}"
+  when: not ansible_check_mode
+
 - name: Read back the installed AWS CLI version
   ansible.builtin.command:
     cmd: "{{ awscli_bin_dir }}/aws --version"

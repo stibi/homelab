@@ -9,6 +9,13 @@ awscli_arch: "{{ 'aarch64' if ansible_architecture == 'aarch64' else 'x86_64' }}
 # after import so a swapped key file cannot pass unnoticed.
 awscli_key_fingerprint: FB5DB77FD5C118B80511ADA8A6310ACC4672475C
 
+# Credentials live here, so 0700/0600 throughout — same treatment as
+# ~/.kube/configs.
+awscli_config_dir: "{{ ansible_user_dir }}/.aws"
+awscli_config_files:
+  - config
+  - credentials
+
 awscli_install_dir: /usr/local/aws-cli
 awscli_bin_dir: /usr/local/bin
 awscli_cache_dir: "{{ ansible_user_dir }}/.cache/ansible-downloads"

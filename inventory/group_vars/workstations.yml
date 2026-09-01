@@ -28,6 +28,15 @@ base_packages:
   # set to `sshpass`. Kept because it is still what most third-party scripts and
   # older runbooks reach for.
   - sshpass
+  # Unprivileged sandboxing: runs a process in its own mount/pid/user
+  # namespaces with a filesystem view you define. Claude Code's Linux sandbox
+  # uses it (settings expose sandbox.bwrapPath), and codex ships its own copy
+  # under codex-resources/ rather than relying on the system one.
+  #
+  # Needs unprivileged user namespaces, which work on this kernel — verified
+  # with `unshare --user --map-root-user true` — so the non-setuid Debian
+  # package is enough.
+  - bubblewrap
 
 # NOTE: neovim is deliberately NOT installed from apt on zase-prace.
 # A newer upstream build already lives in /opt/nvim-linux-x86_64 and is on

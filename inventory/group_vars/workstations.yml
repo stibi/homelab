@@ -143,6 +143,15 @@ asdf_tools:
   - name: terraform
     version: 1.16.0
 
+  # Required by nvim-treesitter's `main` branch, which shells out to
+  # `tree-sitter build` instead of compiling parsers with cc as `master` did.
+  # The README requires 0.26.1 or later, so Debian's tree-sitter-cli (0.22.6)
+  # is too old. Upstream publishes no checksums for these artifacts, so a
+  # pinned get_url would be trust-on-first-use anyway — asdf is no weaker here
+  # and this is a build tool, not a credentials one.
+  - name: tree-sitter
+    version: 0.27.0
+
 # --- cli_tools role ----------------------------------------------------
 
 # Release tarballs, pinned and checksum-verified. Versions current as of

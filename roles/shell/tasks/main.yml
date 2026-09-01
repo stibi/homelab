@@ -59,13 +59,14 @@
 # there (~/.kube/configs/, cluster credentials) would land inside the dotfiles
 # repo. With it, real directories are created and only leaf files are linked.
 # It also means untracked local fragments can sit in ~/.zshrc.d/ safely.
-- name: Deploy the shell dotfiles with stow
+- name: Deploy the dotfiles with stow
   ansible.builtin.command:
     cmd: >-
       stow --verbose --restow --no-folding
       --target={{ ansible_user_dir | quote }}
-      {{ shell_stow_package | quote }}
+      {{ item | quote }}
     chdir: "{{ dotfiles_dir }}"
+  loop: "{{ shell_stow_packages }}"
   register: shell_stow
   changed_when: >-
     'LINK:' in shell_stow.stderr

@@ -63,7 +63,12 @@ dotfiles_repo: git@github.com:stibi/dotfiles.git
 dotfiles_dir: "{{ ansible_user_dir }}/dev/moje/dotfiles"
 
 # The stow package holding this host's shell config.
-shell_stow_package: zsh-linux-zase-prace-vm
+# zsh-linux-zase-prace-vm is machine-specific; nvim is shared with the macOS
+# workstation and contains nothing platform-dependent, so it is stowed as-is
+# rather than forked.
+shell_stow_packages:
+  - zsh-linux-zase-prace-vm
+  - nvim
 
 # Paths the stow package owns. A pre-existing *regular file* at any of these
 # would make stow abort, so the role moves it aside first.

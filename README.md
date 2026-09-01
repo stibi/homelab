@@ -55,7 +55,9 @@ make apply LIMIT=zase-prace TAGS=shell
    it never pulls, so local edits are safe.
 3. Moves any pre-existing real `~/.zshrc`, `~/.zshrc.d` or
    `~/.config/starship.toml` aside with a `.pre-stow.<timestamp>` suffix.
-4. Stows the `zsh-linux-zase-prace-vm` package into `$HOME`.
+4. Stows the packages in `shell_stow_packages` into `$HOME` —
+   `zsh-linux-zase-prace-vm` (machine-specific) and `nvim` (shared with the
+   macOS workstation, nothing platform-dependent in it).
 5. Sets the login shell to `/usr/bin/zsh`.
 6. Starts an interactive zsh as a smoke test, so a broken config fails the
    run instead of ambushing you at next login.
@@ -344,8 +346,9 @@ Omni backend is older.
 ## Adding another host
 
 Add it under `workstations` in `inventory/hosts.yml`; it will be reached over
-SSH. Note that `shell_stow_package` is host-specific — a new machine wants its
-own stow package in the dotfiles repo rather than reusing zase-prace's.
+SSH. Note that the first entry of `shell_stow_packages` is host-specific — a
+new machine wants its own stow package in the dotfiles repo rather than reusing
+zase-prace's. Portable packages such as `nvim` can be shared as-is.
 
 ## Notes
 

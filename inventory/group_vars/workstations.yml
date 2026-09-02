@@ -161,6 +161,17 @@ asdf_tools:
   - name: tree-sitter
     version: 0.27.0
 
+  # Pairs with the terraform pin above; devops/iac has 25 terragrunt.hcl units.
+  #
+  # 19 of those still use bare (unlabeled) `include {}` blocks, deprecated back
+  # in v0.81.0. They still work: the runtime rewrites them in memory for
+  # backwards compatibility, and `terragrunt render` resolves them correctly on
+  # 1.1.4. Only `terragrunt hcl validate` rejects them, because it checks raw
+  # HCL against the schema before that rewrite happens — so a validate run over
+  # this repo will report errors for configs that execute fine.
+  - name: terragrunt
+    version: 1.1.4
+
 # --- cli_tools role ----------------------------------------------------
 
 # Release tarballs, pinned and checksum-verified. Versions current as of

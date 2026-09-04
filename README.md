@@ -319,11 +319,16 @@ Set `codex_version` and the matching `codex_sha256` entry in
 V=$(curl -sL https://api.github.com/repos/openai/codex/releases/latest \
     | sed -n 's/.*"tag_name": "rust-v\([^"]*\)".*/\1/p') && echo "$V"
 curl -sL "https://github.com/openai/codex/releases/download/rust-v$V/codex-package_SHA256SUMS" \
-  | grep -E 'package-(x86_64|aarch64)-unknown-linux-musl'
+  | grep -E '  codex-package-(x86_64|aarch64)-unknown-linux-musl'
 ```
 
 Note the upstream tag is `rust-vX.Y.Z` while the version is `X.Y.Z`, and that
 artifacts are named with Rust target triples rather than amd64/arm64.
+
+The two leading spaces in that grep are load-bearing. Since 0.152.1 the sums
+file also lists `codex-app-server-package-*` for the same target triples, and
+a looser pattern matches those too — anchoring on the separator that precedes
+the filename is what keeps `codex-package-` distinct from a suffix match.
 
 codex installs differently from the other CLI tools. It is unpacked whole into
 `~/.local/share/codex/<version>/` and symlinked to `~/.local/bin/codex`,

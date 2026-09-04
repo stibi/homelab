@@ -172,6 +172,17 @@ asdf_tools:
   - name: terragrunt
     version: 1.1.4
 
+  # Debian 13 packages Go 1.24; this is 1.27.1, and asdf keeps versions side by
+  # side so a project needing another one just drops a .tool-versions.
+  #
+  # `bin` is set because this is the one plugin whose name differs from the
+  # binary it provides — the plugin is "golang", the shim is "go". `version_args`
+  # likewise: go has no --version flag, it is `go version`.
+  - name: golang
+    version: 1.27.1
+    bin: go
+    version_args: version
+
 # --- cli_tools role ----------------------------------------------------
 
 # Release tarballs, pinned and checksum-verified. Versions current as of

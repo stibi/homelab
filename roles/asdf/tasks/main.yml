@@ -66,9 +66,13 @@
   when: not ansible_check_mode
 
 # Skipped under --check: nothing was installed there, so the shim would not exist.
+#
+# `bin` defaults to the plugin name, which holds for every tool here except
+# golang: the plugin is "golang" but the binary it shims is "go", so without
+# the override this would look for a shim that does not exist.
 - name: Read back the installed tool versions
   ansible.builtin.command:
-    cmd: "{{ asdf_data_dir }}/shims/{{ item.name }} {{ item.version_args | default('--version') }}"
+    cmd: "{{ asdf_data_dir }}/shims/{{ item.bin | default(item.name) }} {{ item.version_args | default('--version') }}"
   changed_when: false
   when: not ansible_check_mode
   loop: "{{ asdf_tools }}"

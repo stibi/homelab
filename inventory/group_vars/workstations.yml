@@ -13,6 +13,16 @@ base_packages:
   - tree
   - unzip
   - wget
+  # Native compiler/linker and pkg-config metadata are needed by Rust crates
+  # which build C dependencies. The Rust toolchain itself is managed by asdf
+  # below so projects are not held to Debian's older rustc/cargo packages.
+  - build-essential
+  - pkg-config
+  - libssl-dev
+  # Keep these on Debian's security-supported package track; neither needs a
+  # separately pinned upstream binary for workstation use.
+  - ansible-lint
+  - shellcheck
   # Debian splits venv out of the stdlib, so python3 alone cannot create one
   # (no ensurepip). pre-commit builds a virtualenv for every language:python
   # hook — ruff, black, yamllint, detect-secrets — so without this, pre-commit
@@ -183,6 +193,13 @@ asdf_tools:
     bin: go
     version_args: version
 
+  # The code-lever/asdf-rust plugin installs the official Rust distribution.
+  # Its default profile includes cargo, rustfmt and clippy alongside rustc.
+  # 1.98.1 is the stable release published on 2026-09-03.
+  - name: rust
+    version: 1.98.1
+    bin: rustc
+
 # --- cli_tools role ----------------------------------------------------
 
 # Release tarballs, pinned and checksum-verified. Versions current as of
@@ -251,7 +268,7 @@ cli_tools:
 
 # --- codex role --------------------------------------------------------
 
-# The upstream tag is "rust-v0.152.1" while the version itself is 0.152.1;
+# The upstream tag is "rust-v0.153.2" while the version itself is 0.153.2;
 # the role builds the tag from this value. Checksums are upstream's own, from
 # codex-package_SHA256SUMS, which covers only the "package" artifacts — the
 # plain binary tarballs have no published checksum at all.
@@ -259,10 +276,10 @@ cli_tools:
 # As of 0.152.1 that file also lists codex-app-server-package-* artifacts,
 # which match a grep for the bare target triple. Take the line whose filename
 # starts with "codex-package-"; the app-server one is a different binary.
-codex_version: 0.152.1
+codex_version: 0.153.2
 codex_sha256:
-  x86_64-unknown-linux-musl: 2aeea68239b4d96081b3e7fe91d0d64e4875b224668c381985d22bb31d7566b9
-  aarch64-unknown-linux-musl: f93fc7015af13ac2a2486af23629946d9aade5f88b40c2cc7e1aa1fca2c93ef8
+  x86_64-unknown-linux-musl: e10fa0cee78e9f0bd395880f03fd4fd227d903ca7af649bbc08d1649101e9225
+  aarch64-unknown-linux-musl: a3bfaf4b62fcb17e0a0338dfe0502413ddce0ab1b39028679390539c45d2c6e3
 
 # --- krr role ----------------------------------------------------------
 

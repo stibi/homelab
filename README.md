@@ -345,9 +345,15 @@ asdf is hand-installed and already manages nodejs and bun. The `asdf` role
 does **not** install or touch asdf itself — it only adds plugins and pins
 versions listed in `asdf_tools`, so the existing entries are left alone.
 
-Currently that is **pre-commit**. The plugin installs pre-commit's official
-`.pyz` zipapp from its GitHub release, so no pip or system Python packaging is
-involved; the zipapp runs under `python3` directly.
+The managed tools include **pre-commit** and the development toolchains listed
+in `asdf_tools`. The pre-commit plugin installs its official `.pyz` zipapp from
+the GitHub release, so no pip or system Python packaging is involved; the
+zipapp runs under `python3` directly.
+
+Rust is installed with the `code-lever/asdf-rust` plugin, which uses the
+official Rust distribution. Its default profile supplies `rustc`, `cargo`,
+`rustfmt` and `clippy`; `build-essential`, `pkg-config` and `libssl-dev` come
+from apt for crates that compile or link native dependencies.
 
 `~/.tool-versions` is edited with `lineinfile` rather than `asdf set --home`.
 The file carries hand-written entries — including `nodejs lts`, an alias

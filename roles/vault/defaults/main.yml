@@ -1,0 +1,9 @@
+---
+# Overridden in inventory/group_vars/workstations.yml.
+vault_version: ""
+vault_sha256: {}
+
+vault_install_dir: "{{ ansible_user_dir }}/.local/bin"
+vault_cache_dir: "{{ ansible_user_dir }}/.cache/ansible-downloads"
+vault_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
+vault_asset: "vault_{{ vault_version }}_linux_{{ vault_arch }}.zip"

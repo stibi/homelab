@@ -298,6 +298,17 @@ krr_sha256: 0affa7b4ded83a23c8f561fe429595c4ec94f1ea7dc06f145504ce99b453c859
 # No checksum to pin — the artifact is produced here, from a git tag.
 hunk_version: 0.21.0
 
+# --- vault role -------------------------------------------------------
+
+# HashiCorp publishes this checksum and signs the checksum file. Installing
+# the release archive gives us only the CLI; the vendor apt package would also
+# create a vault system user, server configuration and a systemd unit.
+# Version current as of 2026-09-07.
+vault_version: 2.1.0
+vault_sha256:
+  amd64: 08e8a13d29d20c5e28ef5e2c187bf3a2e84712a43615de1b3d24701ad9aab972
+  arm64: 319b3eb7b0c2ad218453f5d1af5c23cac81a024db3a07ccd2494ecd31f2090c3
+
 # --- herdr role --------------------------------------------------------
 
 # Upstream publishes no checksum file, so these were computed from the v0.8.2

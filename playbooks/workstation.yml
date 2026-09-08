@@ -26,6 +26,8 @@
       tags: [herdr]
     - role: onepassword
       tags: [onepassword, 1password, op]
+    - role: vault
+      tags: [vault]
     - role: awscli
       tags: [awscli, aws]
     - role: node_exporter

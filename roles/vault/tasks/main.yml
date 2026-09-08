@@ -1,0 +1,76 @@
+---
+# HashiCorp Vault CLI.
+#
+# The release archive is used instead of HashiCorp's apt package because this
+# workstation only needs the CLI. The package additionally creates a system
+# user, server configuration and a systemd unit. HashiCorp publishes and signs
+# SHA256SUMS for release artifacts; the pinned checksum below is from that
+# upstream file rather than one observed locally.
+
+- name: Assert Vault is pinned for this architecture
+  ansible.builtin.assert:
+    that:
+      - vault_version | length > 0
+      - vault_sha256[vault_arch] | default('') | length > 0
+    fail_msg: >-
+      Vault needs a version and a sha256 for {{ vault_arch }}.
+      See "Upgrading Vault CLI" in the README.
+    quiet: true
+
+- name: Ensure the Vault install and cache directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - "{{ vault_install_dir }}"
+    - "{{ vault_cache_dir }}"
+
+# failed_when: false lets a missing binary report empty rather than aborting.
+# check_mode: false is safe because this command only reads local state.
+- name: Read the currently installed Vault version
+  ansible.builtin.command:
+    cmd: "{{ vault_install_dir }}/vault version"
+  register: vault_current
+  failed_when: false
+  changed_when: false
+  check_mode: false
+
+- name: Download the Vault release archive
+  ansible.builtin.get_url:
+    url: "https://releases.hashicorp.com/vault/{{ vault_version }}/{{ vault_asset }}"
+    dest: "{{ vault_cache_dir }}/{{ vault_asset }}"
+    checksum: "sha256:{{ vault_sha256[vault_arch] }}"
+    mode: "0644"
+  when:
+    - vault_version not in (vault_current.stdout | default(''))
+    - not ansible_check_mode
+
+# The zip also contains LICENSE.txt; extract only the executable into PATH.
+- name: Install the Vault binary
+  ansible.builtin.unarchive:
+    src: "{{ vault_cache_dir }}/{{ vault_asset }}"
+    dest: "{{ vault_install_dir }}"
+    remote_src: true
+    include:
+      - vault
+    mode: "0755"
+  when:
+    - vault_version not in (vault_current.stdout | default(''))
+    - not ansible_check_mode
+
+- name: Read back the installed Vault version
+  ansible.builtin.command:
+    cmd: "{{ vault_install_dir }}/vault version"
+  changed_when: false
+  when: not ansible_check_mode
+  register: vault_reported
+
+- name: Assert Vault matches the pinned version
+  ansible.builtin.assert:
+    that:
+      - vault_version in vault_reported.stdout
+    fail_msg: >-
+      Expected {{ vault_version }} but Vault reports
+      "{{ vault_reported.stdout | default('') | trim }}".
+    quiet: true
+  when: not ansible_check_mode

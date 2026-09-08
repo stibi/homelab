@@ -26,6 +26,7 @@ roles/
   hunk/                           hunk, compiled from source (CPU has no AVX2)
   herdr/                          herdr binary (does NOT restart the server)
   onepassword/                    1Password CLI from the vendor's signed apt repo
+  vault/                          HashiCorp Vault CLI from its release archive
   awscli/                         AWS CLI v2, PGP-signature verified
   node_exporter/                  Prometheus node_exporter, bound to Tailscale
 Makefile                          check / apply wrappers
@@ -197,6 +198,24 @@ installer when an install already exists.
 ```sh
 curl -sSL 'https://api.github.com/repos/aws/aws-cli/tags?per_page=20' \
   | jq -r '.[].name' | grep -E '^2\.' | head -1
+```
+
+## Vault CLI
+
+Vault is installed as a pinned release archive in `~/.local/bin`, verified
+against the SHA256SUMS published by HashiCorp. The archive route is deliberate:
+the vendor apt package also creates a `vault` system user, server configuration
+and a systemd unit, none of which is needed on a CLI-only workstation.
+
+To upgrade, find the current version and update `vault_version` plus both
+entries in `vault_sha256`:
+
+```sh
+V=$(curl -sL https://developer.hashicorp.com/vault/install \
+  | sed -n 's/.*Vault Version: \([0-9.]*\).*/\1/p' | head -1)
+echo "$V"
+curl -sL "https://releases.hashicorp.com/vault/$V/vault_${V}_SHA256SUMS" \
+  | grep -E "vault_${V}_linux_(amd64|arm64)\\.zip$"
 ```
 
 ## herdr

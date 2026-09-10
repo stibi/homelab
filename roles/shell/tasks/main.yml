@@ -50,7 +50,9 @@
     label: "{{ item.item }}"
   when:
     - item.stat.exists
-    - not item.stat.islnk
+    # A real directory is expected with --no-folding: it holds the leaf
+    # symlinks that stow manages. Only a regular file blocks that layout.
+    - item.stat.isreg
   changed_when: true
 
 # --no-folding is important, not cosmetic. Without it stow replaces a whole
@@ -72,6 +74,28 @@
     'LINK:' in shell_stow.stderr
     or 'UNLINK:' in shell_stow.stderr
     or 'MKDIR:' in shell_stow.stderr
+
+# Custom bat themes are data files, not read directly at runtime. bat compiles
+# them into ~/.cache/bat/themes.bin; merely stowing the files is not enough.
+# Querying the current theme names keeps this idempotent without relying on a
+# cache timestamp, and also repairs a missing or manually cleared cache.
+- name: Read the themes currently available to bat
+  ansible.builtin.command:
+    cmd: /usr/bin/batcat --list-themes
+  register: shell_bat_themes
+  changed_when: false
+  check_mode: false
+
+# Skipped under --check because the stow task above is only simulated there,
+# so the custom source files may not exist on a fresh host yet.
+- name: Build bat's custom theme cache
+  ansible.builtin.command:
+    cmd: /usr/bin/batcat cache --build
+  when:
+    - not ansible_check_mode
+    - "'Catppuccin Latte' not in shell_bat_themes.stdout or
+       'Catppuccin Mocha' not in shell_bat_themes.stdout"
+  changed_when: true
 
 # --- login shell -------------------------------------------------------
 

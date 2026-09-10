@@ -296,7 +296,7 @@ krr_sha256: 0affa7b4ded83a23c8f561fe429595c4ec94f1ea7dc06f145504ce99b453c859
 # Bridge) has AVX but no AVX2, and upstream's prebuilt linux-x64 binary dies
 # with SIGILL on it. A local build embeds the baseline bun runtime instead.
 # No checksum to pin — the artifact is produced here, from a git tag.
-hunk_version: 0.21.0
+hunk_version: 0.22.0
 
 # --- vault role -------------------------------------------------------
 

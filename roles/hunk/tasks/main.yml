@@ -18,16 +18,27 @@
     fail_msg: "hunk_version must be set (e.g. 0.19.0)."
     quiet: true
 
-- name: Check whether this hunk version is already built
+- name: Check whether this hunk version's binary is already installed
   ansible.builtin.stat:
     path: "{{ hunk_share_dir }}/{{ hunk_version }}/hunk"
-  register: hunk_installed
+  register: hunk_binary_installed
+
+- name: Check whether this hunk version's skills are already installed
+  ansible.builtin.stat:
+    path: "{{ hunk_share_dir }}/{{ hunk_version }}/skills/{{ item }}/SKILL.md"
+  loop: "{{ hunk_skills }}"
+  register: hunk_skills_installed
 
 # Everything below is skipped once the version is in place, so a re-run costs
 # nothing and a version bump triggers a fresh build.
 - name: Build and install hunk
   when:
-    - not hunk_installed.stat.exists
+    - >-
+      not hunk_binary_installed.stat.exists
+      or hunk_skills_installed.results
+         | selectattr('stat.exists', 'equalto', false)
+         | list
+         | length > 0
     - not ansible_check_mode
   environment:
     PATH: "{{ hunk_path_prepend }}:{{ ansible_env.PATH }}"
@@ -97,11 +108,12 @@
         remote_src: true
         mode: "0755"
 
-    # `hunk skill path` resolves these relative to the resolved binary, so they
-    # have to sit beside the real file, not beside the symlink.
+    # `build:bin` stages the two publishable skills under dist/skills. They
+    # have to sit beside the real binary because `hunk skill path` resolves
+    # them relative to that file, not relative to the PATH symlink.
     - name: Install the bundled skills
       ansible.builtin.copy:
-        src: "{{ hunk_build_dir }}/{{ hunk_version }}/skills/{{ item }}"
+        src: "{{ hunk_build_dir }}/{{ hunk_version }}/dist/skills/{{ item }}"
         dest: "{{ hunk_share_dir }}/{{ hunk_version }}/skills/"
         remote_src: true
         mode: preserve

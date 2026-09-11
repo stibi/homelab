@@ -87,6 +87,7 @@ dotfiles_dir: "{{ ansible_user_dir }}/dev/moje/dotfiles"
 # rather than forked.
 shell_stow_packages:
   - zsh-linux-zase-prace-vm
+  - herdr
   - nvim
 
 # Paths the stow package owns. A pre-existing *regular file* at any of these

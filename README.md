@@ -52,7 +52,7 @@ make apply LIMIT=zase-prace TAGS=shell
 ## What the shell role does
 
 1. Installs zsh, starship, stow and the CLI tooling the shell config expects
-   (fzf, ripgrep, fd-find, zoxide, eza, bat, git-delta, direnv, plus the
+   (fzf, ripgrep, fd-find, zoxide, eza, bat, git-delta, tig, direnv, plus the
    zsh autosuggestions / syntax-highlighting plugins).
 2. Clones [dotfiles](https://github.com/stibi/dotfiles) if it is missing —
    it never pulls, so local edits are safe.

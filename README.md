@@ -56,7 +56,7 @@ make apply LIMIT=zase-prace TAGS=shell
    zsh autosuggestions / syntax-highlighting plugins).
 2. Clones [dotfiles](https://github.com/stibi/dotfiles) if it is missing —
    it never pulls, so local edits are safe.
-3. Moves any pre-existing real `~/.zshrc`, `~/.zshrc.d` or
+3. Moves any pre-existing real `~/.zshenv`, `~/.zshrc`, `~/.zshrc.d` or
    `~/.config/starship.toml` aside with a `.pre-stow.<timestamp>` suffix.
 4. Stows the packages in `shell_stow_packages` into `$HOME` —
    `zsh-linux-zase-prace-vm` (machine-specific) and `nvim` (shared with the

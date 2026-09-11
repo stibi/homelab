@@ -231,8 +231,9 @@ curl -sL https://github.com/herdrdev/herdr/releases/download/v<VER>/herdr-linux-
 
 **The role only replaces the binary on disk.** It does not stop, restart or
 hand off a running server, because that kills every pane process in the
-session — including any agent running in one. After applying, `herdr status`
-will report a client/server version skew until you restart it yourself:
+session — including any agent running in one. If that server is still on the
+previous version after applying, `herdr status` reports a client/server version
+skew until you restart it yourself:
 
 | Action | Layout | Pane processes / agents |
 |---|---|---|

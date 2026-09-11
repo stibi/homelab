@@ -79,3 +79,4 @@
     - herdr_download is changed
     - herdr_server_status.rc == 0
     - "'running' in (herdr_server_status.stdout | default(''))"
+    - herdr_version not in (herdr_server_status.stdout | default(''))

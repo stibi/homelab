@@ -101,6 +101,7 @@ shell_stow_targets:
   - "{{ ansible_user_dir }}/.config/hunk/config.toml"
   - "{{ ansible_user_dir }}/.config/herdr/config.toml"
   - "{{ ansible_user_dir }}/.config/herdr/plugins/config/herdr-navigator/config.toml"
+  - "{{ ansible_user_dir }}/.config/herdr/plugins/config/jhochenbaum.hunkdiff/config.toml"
 
 # --- kubernetes role ---------------------------------------------------
 

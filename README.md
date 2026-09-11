@@ -25,6 +25,7 @@ roles/
   krr/                            Robusta KRR (PyInstaller bundle)
   hunk/                           hunk, compiled from source (CPU has no AVX2)
   herdr/                          herdr binary (does NOT restart the server)
+  worktrunk/                      Worktrunk (`wt` and `git wt`)
   onepassword/                    1Password CLI from the vendor's signed apt repo
   vault/                          HashiCorp Vault CLI from its release archive
   awscli/                         AWS CLI v2, PGP-signature verified
@@ -249,6 +250,29 @@ whatever the channel offers, and the next Ansible run pins it back. Use one or
 the other. Managing it here is the choice consistent with the rest of this
 repo; if you prefer the built-in updater, delete this role rather than letting
 them fight.
+
+## Upgrading Worktrunk
+
+Worktrunk is installed from its static musl release archive into a versioned
+directory, with both `wt` and `git-wt` linked into `~/.local/bin`. The checksum
+is published upstream in the release's `sha256.sum`. Worktrunk requires Git
+2.43 or newer; Debian 13's Git satisfies that requirement.
+
+The zsh integration is declared in the dotfiles repo instead of running
+`wt config shell install`, because that command edits `.zshrc` itself. The
+integration is required for commands such as `wt switch` to change the parent
+shell's working directory.
+
+To upgrade, update `worktrunk_version` and both checksum entries in
+`inventory/group_vars/workstations.yml`:
+
+```sh
+V=$(curl -sL https://api.github.com/repos/max-sixty/worktrunk/releases/latest \
+  | jq -r '.tag_name')
+echo "$V"
+curl -sL "https://github.com/max-sixty/worktrunk/releases/download/$V/sha256.sum" \
+  | grep -E 'worktrunk-(x86_64|aarch64)-unknown-linux-musl\.tar\.xz$'
+```
 
 ## hunk — why it is compiled, not downloaded
 

@@ -24,6 +24,8 @@
       tags: [hunk]
     - role: herdr
       tags: [herdr]
+    - role: worktrunk
+      tags: [worktrunk, wt]
     - role: onepassword
       tags: [onepassword, 1password, op]
     - role: vault

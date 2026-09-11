@@ -1,0 +1,17 @@
+---
+# Overridden in inventory/group_vars/workstations.yml.
+worktrunk_version: ""
+worktrunk_sha256: {}
+
+worktrunk_bin_dir: "{{ ansible_user_dir }}/.local/bin"
+worktrunk_share_dir: "{{ ansible_user_dir }}/.local/share/worktrunk"
+worktrunk_cache_dir: "{{ ansible_user_dir }}/.cache/ansible-downloads"
+
+worktrunk_target: >-
+  {{ 'aarch64-unknown-linux-musl'
+     if ansible_architecture == 'aarch64'
+     else 'x86_64-unknown-linux-musl' }}
+worktrunk_asset: "worktrunk-{{ worktrunk_target }}.tar.xz"
+worktrunk_binaries:
+  - wt
+  - git-wt

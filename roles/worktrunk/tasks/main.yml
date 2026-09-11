@@ -1,0 +1,114 @@
+---
+# Worktrunk — Git worktree management for parallel agent workflows.
+#
+# Upstream publishes static musl archives for both Linux architectures and a
+# sha256.sum alongside each release. The archive contains `wt` plus `git-wt`,
+# which enables both the direct command and Git's `git wt` dispatch.
+
+- name: Assert Worktrunk is pinned for this architecture
+  ansible.builtin.assert:
+    that:
+      - worktrunk_version | length > 0
+      - worktrunk_sha256[worktrunk_target] | default('') | length > 0
+    fail_msg: >-
+      Worktrunk needs a version and a sha256 for {{ worktrunk_target }}.
+      See "Upgrading Worktrunk" in the README.
+    quiet: true
+
+- name: Read the installed Git version  # noqa command-instead-of-module
+  ansible.builtin.command:
+    cmd: git --version
+  register: worktrunk_git_version
+  changed_when: false
+  check_mode: false
+
+- name: Assert Git meets Worktrunk's minimum version
+  ansible.builtin.assert:
+    that:
+      - worktrunk_git_version.stdout.split()[-1] is version('2.43', '>=')
+    fail_msg: >-
+      Worktrunk requires Git 2.43 or newer, but this host reports
+      "{{ worktrunk_git_version.stdout | default('') | trim }}".
+    quiet: true
+
+# No mode set: the bin and cache directories are shared with other roles, so
+# preserve their existing permissions rather than churning them.
+- name: Ensure the Worktrunk directories exist  # noqa risky-file-permissions
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - "{{ worktrunk_bin_dir }}"
+    - "{{ worktrunk_share_dir }}/{{ worktrunk_version }}"
+    - "{{ worktrunk_cache_dir }}"
+
+- name: Check whether this Worktrunk version is already unpacked
+  ansible.builtin.stat:
+    path: "{{ worktrunk_share_dir }}/{{ worktrunk_version }}/{{ item }}"
+  loop: "{{ worktrunk_binaries }}"
+  register: worktrunk_installed
+
+- name: Download the Worktrunk release archive
+  ansible.builtin.get_url:
+    url: >-
+      https://github.com/max-sixty/worktrunk/releases/download/v{{ worktrunk_version }}/{{ worktrunk_asset }}
+    dest: "{{ worktrunk_cache_dir }}/{{ worktrunk_asset }}"
+    checksum: "sha256:{{ worktrunk_sha256[worktrunk_target] }}"
+    mode: "0644"
+  when:
+    - >-
+      worktrunk_installed.results
+      | selectattr('stat.exists', 'equalto', false)
+      | list
+      | length > 0
+    - not ansible_check_mode
+
+# Keep the accompanying license and release notes beside the binaries. The
+# archive has one target-triple directory at its root, hence strip-components.
+- name: Unpack Worktrunk into its versioned directory
+  ansible.builtin.unarchive:
+    src: "{{ worktrunk_cache_dir }}/{{ worktrunk_asset }}"
+    dest: "{{ worktrunk_share_dir }}/{{ worktrunk_version }}"
+    remote_src: true
+    extra_opts:
+      - --strip-components=1
+  when:
+    - >-
+      worktrunk_installed.results
+      | selectattr('stat.exists', 'equalto', false)
+      | list
+      | length > 0
+    - not ansible_check_mode
+
+- name: Ensure the Worktrunk binaries are executable
+  ansible.builtin.file:
+    path: "{{ worktrunk_share_dir }}/{{ worktrunk_version }}/{{ item }}"
+    mode: "0755"
+  loop: "{{ worktrunk_binaries }}"
+  when: not ansible_check_mode
+
+- name: Link Worktrunk onto PATH
+  ansible.builtin.file:
+    src: "{{ worktrunk_share_dir }}/{{ worktrunk_version }}/{{ item }}"
+    dest: "{{ worktrunk_bin_dir }}/{{ item }}"
+    state: link
+    force: true
+  loop: "{{ worktrunk_binaries }}"
+  when: not ansible_check_mode
+
+- name: Read back the installed Worktrunk version
+  ansible.builtin.command:
+    cmd: "{{ worktrunk_bin_dir }}/wt --version"
+  changed_when: false
+  when: not ansible_check_mode
+  register: worktrunk_reported
+
+- name: Assert Worktrunk matches the pinned version
+  ansible.builtin.assert:
+    that:
+      - worktrunk_version in worktrunk_reported.stdout
+    fail_msg: >-
+      Expected {{ worktrunk_version }} but Worktrunk reports
+      "{{ worktrunk_reported.stdout | default('') | trim }}".
+    quiet: true
+  when: not ansible_check_mode

@@ -58,6 +58,36 @@
     quiet: true
   when: not ansible_check_mode
 
+# `herdr --remote` starts its bridge command directly through ssh, without a
+# login or interactive shell. The server inherits sshd's deliberately small
+# PATH, so ~/.zshenv cannot expose asdf's node shim to plugin actions. Put a
+# stable launcher on that inherited system PATH while leaving the actual Node
+# version under asdf's control.
+- name: Confirm asdf is available for Herdr plugins
+  ansible.builtin.stat:
+    path: "{{ herdr_asdf_bin }}"
+  register: herdr_asdf_stat
+
+- name: Assert asdf is available for Herdr plugins
+  ansible.builtin.assert:
+    that:
+      - herdr_asdf_stat.stat.exists
+      - herdr_asdf_stat.stat.executable
+    fail_msg: >-
+      Herdr plugins need the asdf-managed Node runtime, but asdf was not found
+      at {{ herdr_asdf_bin }}.
+    quiet: true
+
+- name: Expose asdf-managed Node to Herdr plugins
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ herdr_plugin_node_launcher }}"
+    mode: "0755"
+    content: |
+      #!/bin/sh
+      # Managed by Ansible (homelab, herdr role).
+      exec {{ herdr_asdf_bin | quote }} exec node "$@"
+
 # A running server keeps serving the old version until it is restarted, so say
 # so plainly rather than letting a green run imply the upgrade is live.
 - name: Check whether a herdr server is currently running

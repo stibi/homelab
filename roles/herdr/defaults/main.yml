@@ -5,5 +5,10 @@ herdr_sha256: {}
 
 herdr_bin_dir: "{{ ansible_user_dir }}/.local/bin"
 
+# Remote Herdr servers are launched directly by the SSH bridge, so they do not
+# source ~/.zshenv and cannot otherwise find asdf-managed plugin runtimes.
+herdr_asdf_bin: "{{ ansible_user_dir }}/.asdf/bin/asdf"
+herdr_plugin_node_launcher: /usr/local/bin/node
+
 # herdr names its assets by uname-style arch, not amd64/arm64.
 herdr_arch: "{{ 'aarch64' if ansible_architecture == 'aarch64' else 'x86_64' }}"

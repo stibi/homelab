@@ -245,6 +245,12 @@ skew until you restart it yourself:
 Config-only changes need no restart at all: `herdr server reload-config`
 re-reads `config.toml` in place.
 
+Remote attach starts the Herdr bridge directly through SSH, so the server does
+not source `~/.zshenv`. The role therefore installs `/usr/local/bin/node` as a
+small launcher for the asdf-managed Node runtime; server-side plugins such as
+`herdr-hunk-diff` can then find `node` on sshd's minimal PATH without moving
+Node version management out of asdf.
+
 herdr also ships its own updater (`herdr update`, `herdr channel`). That and
 this role are two sources of truth for the same file — a self-update installs
 whatever the channel offers, and the next Ansible run pins it back. Use one or

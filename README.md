@@ -28,6 +28,7 @@ roles/
   worktrunk/                      Worktrunk (`wt` and `git wt`)
   onepassword/                    1Password CLI from the vendor's signed apt repo
   vault/                          HashiCorp Vault CLI from its release archive
+  vault_agent/                    AppRole auto-auth and a loopback Vault API proxy
   awscli/                         AWS CLI v2, PGP-signature verified
   node_exporter/                  Prometheus node_exporter, bound to Tailscale
 Makefile                          check / apply wrappers
@@ -218,6 +219,40 @@ echo "$V"
 curl -sL "https://releases.hashicorp.com/vault/$V/vault_${V}_SHA256SUMS" \
   | grep -E "vault_${V}_linux_(amd64|arm64)\\.zip$"
 ```
+
+## Vault Agent
+
+The `vault_agent` role runs AppRole auto-auth and a Vault API proxy on
+`127.0.0.1:8200`. It installs `/usr/bin/vault` from HashiCorp's signed apt
+repository and disables the packaged Vault server service.
+
+Provision these files manually before applying the role:
+
+| Path | Contents | Owner / mode |
+|---|---|---|
+| `/etc/vault-agent/environment` | `VAULT_ADDR=https://<vault-server>` | `root:root`, `0600` |
+| `/etc/vault-agent/credentials/role_id` | AppRole Role ID | `root:root`, `0600` |
+| `/etc/vault-agent/credentials/secret_id` | AppRole Secret ID | `root:root`, `0600` |
+
+Use raw Role ID and Secret ID values. Ansible validates file metadata and
+permissions without reading or replacing their contents. Systemd passes the
+credentials to the non-root service through `LoadCredential`.
+
+After installing the files, apply the role with:
+
+```sh
+ansible-playbook playbooks/workstation.yml --limit zase-prace --tags vault_agent --diff
+```
+
+Point clients at the local proxy:
+
+```sh
+export VAULT_ADDR=http://127.0.0.1:8200
+```
+
+The role does not edit shell configuration. The proxy always uses its auto-auth
+token, writes no token sink, and is reachable by every local process. Restart
+`vault-agent.service` after manually changing any of the three input files.
 
 ## herdr
 

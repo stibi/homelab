@@ -30,6 +30,8 @@
       tags: [onepassword, 1password, op]
     - role: vault
       tags: [vault]
+    - role: vault_agent
+      tags: [vault_agent]
     - role: awscli
       tags: [awscli, aws]
     - role: node_exporter

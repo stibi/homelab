@@ -1,0 +1,22 @@
+# Managed by Ansible (homelab, vault_agent role).
+disable_mlock = false
+
+auto_auth {
+  method "approle" {
+    mount_path = {{ vault_agent_auth_mount | to_json }}
+    config = {
+      role_id_file_path = "/run/credentials/vault-agent.service/role_id"
+      secret_id_file_path = "/run/credentials/vault-agent.service/secret_id"
+      remove_secret_id_file_after_reading = false
+    }
+  }
+}
+
+listener "tcp" {
+  address = "127.0.0.1:8200"
+  tls_disable = true
+}
+
+api_proxy {
+  use_auto_auth_token = "force"
+}

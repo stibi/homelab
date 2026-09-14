@@ -1,0 +1,157 @@
+- name: Validate Vault Agent platform and configuration
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['distribution'] == 'Debian'
+      - ansible_facts['distribution_major_version'] | int >= 13
+      - ansible_facts['architecture'] in ['x86_64', 'aarch64']
+      - vault_agent_auth_mount is match('^auth/[a-zA-Z0-9_/-]+$')
+    quiet: true
+
+- name: Inspect manually provisioned Vault Agent files
+  become: true
+  ansible.builtin.stat:
+    path: "{{ item }}"
+    follow: false
+    get_checksum: false
+    get_mime: false
+    get_attributes: false
+  loop:
+    - /etc/vault-agent/environment
+    - /etc/vault-agent/credentials/role_id
+    - /etc/vault-agent/credentials/secret_id
+  register: vault_agent_manual_files
+
+- name: Require nonempty regular Vault Agent files
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists
+      - item.stat.isreg | default(false)
+      - item.stat.nlink | default(0) == 1
+      - item.stat.size | default(0) > 0
+    fail_msg: >-
+      Install a nonempty regular file at {{ item.item }}
+      before running this role. See the Vault Agent section in README.md.
+    quiet: true
+  loop: "{{ vault_agent_manual_files.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+
+- name: Inspect services before installing the Vault package
+  ansible.builtin.service_facts:
+
+- name: Refuse to replace a running Vault server
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.services.get('vault.service', {}).get('state', 'stopped') != 'running'
+    fail_msg: This workstation role requires the packaged Vault server to be inactive.
+    quiet: true
+
+- name: Install signed repository prerequisites
+  become: true
+  ansible.builtin.apt:
+    name: [ca-certificates, python3-debian]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+# A first check run cannot use packages or users that were only simulated above.
+- name: Install and configure Vault Agent
+  become: true
+  when: not ansible_check_mode
+  block:
+    - name: Add the HashiCorp signed apt repository
+      ansible.builtin.deb822_repository:
+        name: hashicorp
+        types: [deb]
+        uris: "{{ vault_agent_repo_uri }}"
+        suites: "{{ vault_agent_repo_suite }}"
+        components: [main]
+        architectures: "{{ vault_agent_deb_arch }}"
+        signed_by: "{{ vault_agent_key_url }}"
+        state: present
+        enabled: true
+      register: vault_agent_repository
+
+    - name: Install Vault without starting the packaged server
+      ansible.builtin.apt:
+        name: vault
+        state: present
+        update_cache: true
+        cache_valid_time: "{{ 0 if vault_agent_repository is changed else 3600 }}"
+        policy_rc_d: 101
+      notify: Restart Vault Agent
+
+    - name: Disable and mask the packaged Vault server
+      ansible.builtin.systemd_service:
+        name: vault.service
+        enabled: false
+        masked: true
+        state: stopped
+        daemon_reload: true
+
+    - name: Create the Vault Agent group
+      ansible.builtin.group:
+        name: vault-agent
+        system: true
+
+    - name: Create the Vault Agent user
+      ansible.builtin.user:
+        name: vault-agent
+        group: vault-agent
+        system: true
+        create_home: false
+        home: /nonexistent
+        shell: /usr/sbin/nologin
+
+    - name: Create the Vault Agent configuration directory
+      ansible.builtin.file:
+        path: /etc/vault-agent
+        state: directory
+        owner: root
+        group: vault-agent
+        mode: "0750"
+
+    - name: Create the root-only credential directory
+      ansible.builtin.file:
+        path: /etc/vault-agent/credentials
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: Protect manually provisioned Vault Agent files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: file
+        owner: root
+        group: root
+        mode: "0600"
+      loop:
+        - /etc/vault-agent/environment
+        - /etc/vault-agent/credentials/role_id
+        - /etc/vault-agent/credentials/secret_id
+
+    - name: Configure Vault Agent
+      ansible.builtin.template:
+        src: agent.hcl.j2
+        dest: /etc/vault-agent/agent.hcl
+        owner: root
+        group: vault-agent
+        mode: "0640"
+      notify: Restart Vault Agent
+
+    - name: Install the Vault Agent systemd unit
+      ansible.builtin.template:
+        src: vault-agent.service.j2
+        dest: /etc/systemd/system/vault-agent.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart Vault Agent
+
+    - name: Enable and start Vault Agent
+      ansible.builtin.systemd_service:
+        name: vault-agent.service
+        enabled: true
+        state: started
+        daemon_reload: true

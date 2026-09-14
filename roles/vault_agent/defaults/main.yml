@@ -1,0 +1,6 @@
+vault_agent_auth_mount: auth/approle
+
+vault_agent_repo_uri: https://apt.releases.hashicorp.com
+vault_agent_key_url: https://apt.releases.hashicorp.com/gpg
+vault_agent_repo_suite: "{{ ansible_facts['distribution_release'] }}"
+vault_agent_deb_arch: "{{ 'arm64' if ansible_facts['architecture'] == 'aarch64' else 'amd64' }}"

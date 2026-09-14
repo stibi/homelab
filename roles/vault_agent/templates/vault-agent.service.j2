@@ -1,0 +1,41 @@
+# Managed by Ansible (homelab, vault_agent role).
+[Unit]
+Description=Vault Agent AppRole authentication and local API proxy
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=vault-agent
+Group=vault-agent
+EnvironmentFile=/etc/vault-agent/environment
+LoadCredential=role_id:/etc/vault-agent/credentials/role_id
+LoadCredential=secret_id:/etc/vault-agent/credentials/secret_id
+ExecStart=/usr/bin/vault agent -config=/etc/vault-agent/agent.hcl
+Restart=on-failure
+RestartSec=5
+UMask=0077
+LimitCORE=0
+LimitMEMLOCK=infinity
+NoNewPrivileges=true
+CapabilityBoundingSet=CAP_IPC_LOCK
+AmbientCapabilities=CAP_IPC_LOCK
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

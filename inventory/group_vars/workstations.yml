@@ -211,11 +211,10 @@ asdf_tools:
 
 # --- cli_tools role ----------------------------------------------------
 
-# Release tarballs, pinned and checksum-verified. Versions current as of
-# 2026-08-13. gh, glab and flux are pinned for both arches (upstream publishes
-# both); cue is amd64-only because it ships no checksums file at all, so an
-# arm64 pin would have to be computed by hand. The role asserts on a missing
-# pin rather than silently building a bad URL.
+# Release tarballs, pinned and checksum-verified. gh, glab, flux and age are
+# pinned for both arches; cue is amd64-only because it ships no checksums file
+# at all, so an arm64 pin would have to be computed by hand. The role asserts
+# on a missing pin rather than silently building a bad URL.
 #
 # gh and glab ARE in Debian 13, but far behind: gh 2.46.0 vs 2.97.0 upstream,
 # glab 1.53.0 vs 1.113.0. cue and flux are not packaged at all.
@@ -223,7 +222,8 @@ asdf_tools:
 # version_args differ per tool and were checked against the real binaries:
 # cue has no --version flag at all, it is `cue version`.
 #
-# archive_path is where the binary sits inside the tarball; all four differ.
+# archive_path is where the primary binary sits inside the tarball; use
+# additional_archive_paths when the same archive supplies companion commands.
 cli_tools:
   - name: gh
     version: 2.97.0
@@ -253,6 +253,21 @@ cli_tools:
     version_args: version
     sha256:
       amd64: a39b0c97695069d95d276d99be0f5dbabb081d801bfdc9ba49b76efaf94e2369
+
+  # age publishes Sigsum proofs rather than a conventional checksum manifest.
+  # These hashes were verified against both v1.3.2 release archives on
+  # 2026-09-14 and are pinned from now on. age-keygen is part of the standard
+  # command suite and comes from the same verified archive.
+  - name: age
+    version: 1.3.2
+    url: https://github.com/FiloSottile/age/releases/download/v1.3.2/age-v1.3.2-linux-{{ cli_tools_arch }}.tar.gz
+    archive_path: age/age
+    additional_archive_paths:
+      - age/age-keygen
+    version_args: --version
+    sha256:
+      amd64: cbe24006683f8eb669266162894b9a522a1af52f2665fbc63a4bb032ed26ac10
+      arm64: 6b8dc4333c53a5a57c9e5834e3a48f92605d7154014cd07269ff3327db5d37f4
 
   - name: flux
     version: 2.9.4

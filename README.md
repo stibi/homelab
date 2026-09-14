@@ -20,7 +20,7 @@ roles/
   kubernetes/                     kubectl + kubie, kubeconfig layout
   talos/                          talosctl + omnictl
   asdf/                           asdf plugins and pinned versions (pre-commit)
-  cli_tools/                      gh, glab, cue, flux from release tarballs
+  cli_tools/                      gh, glab, cue, age, flux and k9s release archives
   codex/                          OpenAI Codex CLI
   krr/                            Robusta KRR (PyInstaller bundle)
   hunk/                           hunk, compiled from source (CPU has no AVX2)
@@ -123,30 +123,32 @@ They are pinned rather than fetched at run time on purpose — fetching the
 checksum from the same place as the binary would verify nothing. Pinning them
 in git is what makes the download meaningful and the build reproducible.
 
-## Upgrading the CLI tools (gh, glab, cue, flux)
+## Upgrading the CLI tools (gh, glab, cue, age, flux, k9s)
 
-All four are pinned release tarballs in the `cli_tools` list in
+All are pinned release tarballs in the `cli_tools` list in
 `inventory/group_vars/workstations.yml`.
 
 ```sh
 make cli-latest
 ```
 
-That prints current versions and checksums for all four. Paste them in, along
-with the version inside `url` and `archive_path`.
+That prints upgrade data for `gh`, `glab`, `cue`, `age` and `flux`. Paste it
+in, along with the version inside `url` and `archive_path` where applicable.
 
 Things that bite when bumping these:
 
 - **Each tool lays its tarball out differently**, which is what `archive_path`
   records: `gh` nests under a versioned directory, `glab` under `bin/`, `cue`
-  and `flux` put the binary at the archive root. `gh`'s path contains the
-  version, so it must be bumped in two places.
+  and `flux` put the binary at the archive root, and `age` ships `age-keygen`
+  beside its primary binary. `gh`'s path contains the version, so it must be
+  bumped in two places.
 - **`cue` publishes no checksums file** — its sha256 has to be computed by
   hand (`make cli-latest` prints the command). It is also the only one whose
   tarball name carries a `v` prefix.
 - **`cue` has no `--version` flag**; it is `cue version`. That is why
   `version_args` is per-tool.
-- `gh`, `glab` and `flux` are pinned for amd64 and arm64; `cue` is amd64 only.
+- `gh`, `glab`, `flux` and `age` are pinned for amd64 and arm64; `cue` is
+  amd64 only.
 
 Both `gh` and `glab` exist in Debian 13, but lag badly — 2.46.0 vs 2.97.0 and
 1.53.0 vs 1.113.0 — which is why they come from upstream releases instead.

@@ -35,7 +35,7 @@ kubectl-latest: ## Print the current kubectl version and checksum, for pinning
 	echo "kubectl_version: $$V"; \
 	echo "kubectl_sha256: $$(curl -sL https://dl.k8s.io/release/$$V/bin/linux/amd64/kubectl.sha256)"
 
-cli-latest: ## Print current gh/glab/cue/flux versions and checksums, for pinning
+cli-latest: ## Print current CLI-tool versions and checksums, for pinning
 	@for r in cli/cli:gh fluxcd/flux2:flux; do \
 	  repo=$${r%%:*}; bin=$${r##*:}; \
 	  V=$$(curl -sL https://api.github.com/repos/$$repo/releases/latest \
@@ -53,7 +53,13 @@ cli-latest: ## Print current gh/glab/cue/flux versions and checksums, for pinnin
 	     | sed -n 's/.*"tag_name": "v\{0,1\}\([^"]*\)".*/\1/p'); \
 	echo "cue $$V"; \
 	echo "  cue publishes no checksums file - compute it:"; \
-	echo "  curl -sL https://github.com/cue-lang/cue/releases/download/v$$V/cue_v$${V}_linux_amd64.tar.gz | sha256sum"
+	echo "  curl -sL https://github.com/cue-lang/cue/releases/download/v$$V/cue_v$${V}_linux_amd64.tar.gz | sha256sum"; \
+	V=$$(curl -sL https://api.github.com/repos/FiloSottile/age/releases/latest \
+	     | sed -n 's/.*"tag_name": "v\{0,1\}\([^"]*\)".*/\1/p'); \
+	echo "age $$V (Sigsum proofs, no conventional checksum manifest):"; \
+	for arch in amd64 arm64; do \
+	  echo "  $$arch: $$(curl -sL https://github.com/FiloSottile/age/releases/download/v$$V/age-v$${V}-linux-$$arch.tar.gz | sha256sum | cut -d' ' -f1)"; \
+	done
 
 talos-latest: ## Print current talosctl/omnictl versions and checksums, for pinning
 	@for r in siderolabs/talos:talosctl siderolabs/omni:omnictl; do \

@@ -1,10 +1,11 @@
 ---
-# CLI tools shipped as release tarballs (gh, glab, cue, flux).
+# CLI tools shipped as release tarballs.
 #
 # Separate from the kubernetes/talos roles because those tools publish bare
-# binaries, while these are archives — and all four lay their archives out
-# differently: gh nests under a versioned directory, glab under bin/, cue and
-# flux put the binary at the archive root. Hence the per-tool archive_path.
+# binaries, while these are archives — and the tools lay their archives out
+# differently: gh nests under a versioned directory, glab under bin/, some put
+# the binary at the archive root, and age ships a small command suite. Hence
+# the per-tool archive_path and optional additional_archive_paths.
 #
 # Version is not taken on faith either: each tool is asked what it is before
 # anything downloads, so a re-run is a no-op and a version bump reinstalls.
@@ -15,8 +16,8 @@
       - item.version | default('') | length > 0
       - item.sha256[cli_tools_arch] | default('') | length > 0
     fail_msg: >-
-      {{ item.name }} has no pinned sha256 for {{ cli_tools_arch }}. Only
-      amd64 is pinned — see "Upgrading the CLI tools" in the README.
+      {{ item.name }} has no pinned sha256 for {{ cli_tools_arch }}. See
+      "Upgrading the CLI tools" in the README.
     quiet: true
   loop: "{{ cli_tools }}"
   loop_control:
@@ -68,9 +69,12 @@
     dest: "{{ cli_tools_install_dir }}"
     remote_src: true
     mode: "0755"
-    extra_opts:
-      - "--strip-components={{ item.0.archive_path.split('/') | length - 1 }}"
-      - "{{ item.0.archive_path }}"
+    extra_opts: >-
+      {{
+        ['--strip-components=' ~ (item.0.archive_path.split('/') | length - 1),
+         item.0.archive_path]
+        + (item.0.additional_archive_paths | default([]))
+      }}
   loop: "{{ cli_tools | zip(cli_tools_current.results) | list }}"
   loop_control:
     label: "{{ item.0.name }} {{ item.0.version }}"

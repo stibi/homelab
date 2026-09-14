@@ -14,7 +14,9 @@ LoadCredential=secret_id:/etc/vault-agent/credentials/secret_id
 ExecStart=/usr/bin/vault agent -config=/etc/vault-agent/agent.hcl
 Restart=on-failure
 RestartSec=5
-UMask=0077
+RuntimeDirectory=vault-agent
+RuntimeDirectoryMode=0750
+UMask=0027
 LimitCORE=0
 LimitMEMLOCK=infinity
 NoNewPrivileges=true

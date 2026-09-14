@@ -36,6 +36,24 @@
   loop_control:
     label: "{{ item.item }}"
 
+- name: Inspect the standard Vault token helper path
+  ansible.builtin.stat:
+    path: "{{ ansible_user_dir }}/.vault-token"
+    follow: false
+  register: vault_agent_token_helper
+
+- name: Refuse to replace an independently managed Vault token
+  ansible.builtin.assert:
+    that:
+      - >-
+        not vault_agent_token_helper.stat.exists or
+        (vault_agent_token_helper.stat.islnk | default(false) and
+         vault_agent_token_helper.stat.lnk_source == '/run/vault-agent/token')
+    fail_msg: >-
+      {{ ansible_user_dir }}/.vault-token already exists and is not managed by
+      this role. Remove or relocate it before applying the Vault Agent role.
+    quiet: true
+
 - name: Inspect services before installing the Vault package
   ansible.builtin.service_facts:
 
@@ -103,6 +121,12 @@
         home: /nonexistent
         shell: /usr/sbin/nologin
 
+    - name: Allow the workstation user to read the Vault Agent token
+      ansible.builtin.user:
+        name: "{{ ansible_user_id }}"
+        groups: vault-agent
+        append: true
+
     - name: Create the Vault Agent configuration directory
       ansible.builtin.file:
         path: /etc/vault-agent
@@ -148,6 +172,15 @@
         group: root
         mode: "0644"
       notify: Restart Vault Agent
+
+    - name: Link the Vault token helper to the Agent token sink
+      ansible.builtin.file:
+        src: /run/vault-agent/token
+        dest: "{{ ansible_user_dir }}/.vault-token"
+        state: link
+        force: true
+        owner: "{{ ansible_user_id }}"
+        group: "{{ ansible_user_gid }}"
 
     - name: Enable and start Vault Agent
       ansible.builtin.systemd_service:

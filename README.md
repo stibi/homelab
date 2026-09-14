@@ -250,9 +250,18 @@ Point clients at the local proxy:
 export VAULT_ADDR=http://127.0.0.1:8200
 ```
 
-The role does not edit shell configuration. The proxy always uses its auto-auth
-token, writes no token sink, and is reachable by every local process. Restart
-`vault-agent.service` after manually changing any of the three input files.
+The proxy always uses its auto-auth token and is reachable by every local
+process. The agent also writes its renewable token to `/run/vault-agent/token`,
+readable by members of the `vault-agent` group. The role adds the workstation
+user to that group and links `~/.vault-token` to the sink, so Vault-aware tools
+can use the standard token-helper path. In particular, the Terraform Vault
+provider prefers an explicit `VAULT_TOKEN` and falls back to `~/.vault-token`
+when it is unset.
+
+Log out and back in after the first apply so the existing login session picks
+up its new group membership. The role does not edit shell configuration.
+Restart `vault-agent.service` after manually changing any of the three input
+files.
 
 ## herdr
 

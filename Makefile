@@ -59,7 +59,12 @@ cli-latest: ## Print current CLI-tool versions and checksums, for pinning
 	echo "age $$V (Sigsum proofs, no conventional checksum manifest):"; \
 	for arch in amd64 arm64; do \
 	  echo "  $$arch: $$(curl -sL https://github.com/FiloSottile/age/releases/download/v$$V/age-v$${V}-linux-$$arch.tar.gz | sha256sum | cut -d' ' -f1)"; \
-	done
+	done; \
+	V=$$(curl -sL https://api.github.com/repos/kubecolor/kubecolor/releases/latest \
+	     | sed -n 's/.*"tag_name": "v\{0,1\}\([^"]*\)".*/\1/p'); \
+	echo "kubecolor $$V"; \
+	curl -sL https://github.com/kubecolor/kubecolor/releases/download/v$$V/checksums.txt \
+	  | grep -E "linux_(amd64|arm64)\.tar\.gz$$" | sed 's/^/  /'
 
 talos-latest: ## Print current talosctl/omnictl versions and checksums, for pinning
 	@for r in siderolabs/talos:talosctl siderolabs/omni:omnictl; do \

@@ -290,6 +290,18 @@ cli_tools:
       amd64: c3752ad51a5a4015a113819c4eeb6e55a4d0e4b8e652494797532f6fc8161dd7
       arm64: 3ee05c82e5f9198928a4e86133608ba6a2c10a2244d6a7789e820f78319d640c
 
+  # kubectl intentionally emits uncoloured output. kubecolor wraps it and is
+  # aliased to kubectl by the shell config, which also supplies automatically
+  # selected Catppuccin Latte/Mocha colours. Checksums are published upstream.
+  - name: kubecolor
+    version: 0.6.0
+    url: https://github.com/kubecolor/kubecolor/releases/download/v0.6.0/kubecolor_0.6.0_linux_{{ cli_tools_arch }}.tar.gz
+    archive_path: kubecolor
+    version_args: --kubecolor-version
+    sha256:
+      amd64: ded167eb2d94145cc46e4ccb52db24e85a865858353014514a85cb59c649d2fe
+      arm64: aa56015817bdfe8a8944169e5b18108235fb5bca671f89fa52613b4379bf1f66
+
 # --- codex role --------------------------------------------------------
 
 # The upstream tag is "rust-v0.154.0" while the version itself is 0.154.0;

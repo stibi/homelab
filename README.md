@@ -123,7 +123,7 @@ They are pinned rather than fetched at run time on purpose — fetching the
 checksum from the same place as the binary would verify nothing. Pinning them
 in git is what makes the download meaningful and the build reproducible.
 
-## Upgrading the CLI tools (gh, glab, cue, age, flux, k9s)
+## Upgrading the CLI tools (gh, glab, cue, age, flux, k9s, kubecolor)
 
 All are pinned release tarballs in the `cli_tools` list in
 `inventory/group_vars/workstations.yml`.
@@ -132,7 +132,8 @@ All are pinned release tarballs in the `cli_tools` list in
 make cli-latest
 ```
 
-That prints upgrade data for `gh`, `glab`, `cue`, `age` and `flux`. Paste it
+That prints upgrade data for `gh`, `glab`, `cue`, `age`, `flux` and
+`kubecolor`. Paste it
 in, along with the version inside `url` and `archive_path` where applicable.
 
 Things that bite when bumping these:
@@ -149,6 +150,11 @@ Things that bite when bumping these:
   `version_args` is per-tool.
 - `gh`, `glab`, `flux` and `age` are pinned for amd64 and arm64; `cue` is
   amd64 only.
+
+`kubecolor` supplies the colour layer for `kubectl`. The shell aliases
+`kubectl` to it and sets Catppuccin Latte or Mocha colours from the same
+terminal appearance detection used by bat, tig, hunk and the prompt. Upstream
+does not auto-detect light and dark backgrounds itself.
 
 Both `gh` and `glab` exist in Debian 13, but lag badly — 2.46.0 vs 2.97.0 and
 1.53.0 vs 1.113.0 — which is why they come from upstream releases instead.

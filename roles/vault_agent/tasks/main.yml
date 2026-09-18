@@ -40,6 +40,7 @@
   ansible.builtin.stat:
     path: "{{ ansible_user_dir }}/.vault-token"
     follow: false
+    checksum_algorithm: sha256
   register: vault_agent_token_helper
 
 - name: Refuse to replace an independently managed Vault token
@@ -48,7 +49,10 @@
       - >-
         not vault_agent_token_helper.stat.exists or
         (vault_agent_token_helper.stat.islnk | default(false) and
-         vault_agent_token_helper.stat.lnk_source == '/run/vault-agent/token')
+         vault_agent_token_helper.stat.lnk_source == '/run/vault-agent/token') or
+        (vault_agent_token_helper.stat.isreg | default(false) and
+         vault_agent_token_helper.stat.checksum ==
+         ((vault_agent_proxy_token_placeholder ~ '\n') | hash('sha256')))
     fail_msg: >-
       {{ ansible_user_dir }}/.vault-token already exists and is not managed by
       this role. Remove or relocate it before applying the Vault Agent role.
@@ -121,11 +125,19 @@
         home: /nonexistent
         shell: /usr/sbin/nologin
 
-    - name: Allow the workstation user to read the Vault Agent token
-      ansible.builtin.user:
-        name: "{{ ansible_user_id }}"
-        groups: vault-agent
-        append: true
+    - name: Read the workstation user's supplementary groups
+      ansible.builtin.command:
+        cmd: "id --groups --name {{ ansible_user_id }}"
+      register: vault_agent_workstation_groups
+      changed_when: false
+
+    # Earlier versions shared the real token through this group. The proxy now
+    # keeps that token in memory, so retain no unnecessary access to its files.
+    - name: Remove the workstation user from the Vault Agent group
+      ansible.builtin.command:
+        cmd: "/usr/bin/gpasswd --delete {{ ansible_user_id }} vault-agent"
+      changed_when: true
+      when: "'vault-agent' in vault_agent_workstation_groups.stdout.split()"
 
     - name: Create the Vault Agent configuration directory
       ansible.builtin.file:
@@ -173,14 +185,23 @@
         mode: "0644"
       notify: Restart Vault Agent
 
-    - name: Link the Vault token helper to the Agent token sink
+    # The API proxy is configured with use_auto_auth_token="force", so it
+    # ignores this client-supplied value and substitutes the AppRole token held
+    # in memory. A private placeholder satisfies clients such as the Terraform
+    # Vault provider, which reject token-helper files with any group access.
+    - name: Remove the legacy shared-token link
       ansible.builtin.file:
-        src: /run/vault-agent/token
         dest: "{{ ansible_user_dir }}/.vault-token"
-        state: link
-        force: true
+        state: absent
+      when: vault_agent_token_helper.stat.islnk | default(false)
+
+    - name: Install the private Vault Agent proxy token placeholder
+      ansible.builtin.copy:
+        content: "{{ vault_agent_proxy_token_placeholder }}\n"
+        dest: "{{ ansible_user_dir }}/.vault-token"
         owner: "{{ ansible_user_id }}"
         group: "{{ ansible_user_gid }}"
+        mode: "0600"
 
     - name: Enable and start Vault Agent
       ansible.builtin.systemd_service:

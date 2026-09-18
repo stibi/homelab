@@ -10,13 +10,6 @@ auto_auth {
       remove_secret_id_file_after_reading = false
     }
   }
-
-  sink "file" {
-    config = {
-      path = "/run/vault-agent/token"
-      mode = 0640
-    }
-  }
 }
 
 listener "tcp" {

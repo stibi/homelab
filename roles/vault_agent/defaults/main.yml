@@ -1,4 +1,5 @@
 vault_agent_auth_mount: auth/approle
+vault_agent_proxy_token_placeholder: vault-agent-proxy
 
 vault_agent_repo_uri: https://apt.releases.hashicorp.com
 vault_agent_key_url: https://apt.releases.hashicorp.com/gpg

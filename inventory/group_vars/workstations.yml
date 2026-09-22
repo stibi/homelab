@@ -141,12 +141,12 @@ talos_binaries:
       arm64: 255ed9ccd2cfa26c619c5d445c013e4b6bf9e7d5a5aecbd72145db01a531ec60
 
   - name: omnictl
-    version: v1.10.0
+    version: v1.11.0
     url_base: https://github.com/siderolabs/omni/releases/download
     version_args: --version
     sha256:
-      amd64: 7a5dc3af00ea77d286909953bb7bfdb9a660fb61bd111620fcd1761d054807e5
-      arm64: 4a1ec4b24361ea1051d1c2b9673dbf7987f62d1c82e73c32e7894714b04c8182
+      amd64: 358e8b102fda75c9a4298ac6720379276bb19c9da8fdf0fe7a490342b4ea1754
+      arm64: f579346cf9a6030ef6c23b583d2a6a2ab32241d633b6cc16f44cb196d660dcb7
 
 # --- asdf role ---------------------------------------------------------
 
